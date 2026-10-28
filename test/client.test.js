@@ -386,3 +386,14 @@ test('提案页读法：补丁走内联 diff、账本走字段中文名，不再
   assert.ok(gatesUse > 0, '提案展开体必须渲染闸门结果')
   assert.ok(patchStart > 0 && gatesUse < patchStart, '闸门结论要排在改动清单前面')
 })
+
+test('防重复提交：投递有在飞锁、开新书有重入锁、宿主有幂等窗口', () => {
+  assert.match(source, /const inflightSends = new Set\(\)/)
+  assert.match(source, /if \(inflightSends\.has\(lockKey\)\) return \{ sent: false, duplicate: true \}/)
+  assert.match(source, /const submitLock = useRef\(false\)/)
+  assert.match(source, /if \(submitLock\.current \|\| busy\) return/)
+  assert.match(indexSource, /const SEND_DEDUPE_MS = /)
+  assert.match(indexSource, /deduped: true/)
+  // 幂等只认「完全相同的 prompt」：指纹里必须带长度和两个 hash 分量
+  assert.match(indexSource, /function textFingerprint\(text\)/)
+})

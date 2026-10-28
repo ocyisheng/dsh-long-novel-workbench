@@ -1331,3 +1331,26 @@ test('账本修订：patch 必须是 JSON 对象（字符串能解析就规范�
   await writeFile(path, JSON.stringify(rows, null, 2))
   await assert.rejects(() => store.acceptProposal(root, project.id, 'pp_legacy_broken'), /不是 JSON 对象/)
 })
+
+test('提案去重：同一份工作单跑两遍、标题只差标点也只留一条', async (t) => {
+  const root = await tempRoot(t)
+  const project = await store.createProject(root, { title: '去重书' })
+  const first = await store.createProposal(root, project.id, {
+    kind: 'ledger-fix',
+    title: '主线冲突：3条',
+    data: { ledgerFixes: [{ kind: 'conflicts', patch: { title: '主角与宿主对立' } }] },
+  })
+  const again = await store.createProposal(root, project.id, {
+    kind: 'ledger-fix',
+    title: '主线冲突 3 条',
+    data: { ledgerFixes: [{ kind: 'conflicts', patch: { title: '主角与 Host 对立' } }] },
+  })
+  assert.equal(again.id, first.id, '标题只差标点应当视为同一条提案')
+  const list = await store.listProposals(root, project.id, {})
+  assert.equal(list.filter((row) => row.status === 'pending').length, 1)
+
+  // 数字不同就不是同一条（硬事实 10 条 vs 12 条）
+  const a = await store.createProposal(root, project.id, { kind: 'ledger-fix', title: '硬事实 10 条', data: { ledgerFixes: [{ kind: 'facts', patch: { text: '林默是捕快' } }] } })
+  const b = await store.createProposal(root, project.id, { kind: 'ledger-fix', title: '硬事实 12 条', data: { ledgerFixes: [{ kind: 'facts', patch: { text: '沈砚是仵作' } }] } })
+  assert.notEqual(a.id, b.id)
+})

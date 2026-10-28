@@ -472,7 +472,20 @@ window.__ModuleLoader__.load({
     }
 
     // 发工作单到 DSH 对话：支持指定目标会话；成功后自动跳回那个对话
+    // 同一份提示词在投递过程中只允许有一个请求在飞（防双击、防按钮连点、防重试风暴）
+    const inflightSends = new Set()
     async function sendToChat(projectId, payload, target) {
+      const promptText = String(payload?.prompt ?? '')
+      const lockKey = `${projectId || ''}|${String(payload?.workorder ?? '')}|${promptText.length}|${promptText.slice(0, 96)}`
+      if (inflightSends.has(lockKey)) return { sent: false, duplicate: true }
+      inflightSends.add(lockKey)
+      try {
+        return await deliverToChat(projectId, payload, target)
+      } finally {
+        inflightSends.delete(lockKey)
+      }
+    }
+    async function deliverToChat(projectId, payload, target) {
       const extra = typeof targetPayload === 'function' ? targetPayload(target) : {}
       let value
       try {
@@ -1180,6 +1193,8 @@ window.__ModuleLoader__.load({
       const [presetId, setPresetId] = useState('')
       const [form, setForm] = useState({ title: '', genre: '', era: '', idea: '', chapters: '', wordsPerChapter: '', generate: true })
       const [busy, setBusy] = useState(false)
+      // 真·重入锁：state 更新是异步的，连点两下时两次点击可能都读到 busy=false
+      const submitLock = useRef(false)
       const [error, setError] = useState('')
       const [result, setResult] = useState(null)
       const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
@@ -1220,7 +1235,8 @@ window.__ModuleLoader__.load({
       const ideaText = [form.idea.trim(), form.era.trim() ? `时代/背景：${form.era.trim()}` : ''].filter(Boolean).join('\n')
 
       const submit = async () => {
-        if (busy) return
+        if (submitLock.current || busy) return
+        submitLock.current = true
         setBusy(true)
         setError('')
         try {
@@ -1259,6 +1275,7 @@ window.__ModuleLoader__.load({
         } catch (err) {
           setError(`创建失败：${friendlyError(err)}`)
         } finally {
+          submitLock.current = false
           setBusy(false)
         }
       }

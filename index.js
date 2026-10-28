@@ -47,6 +47,30 @@ export const ROUTE = '/novel-desk/api'
 
 /** 请求体上限：8MB（够一章 20 万字，也挡住误传整库）。 */
 const MAX_BODY = 8 * 1024 * 1024
+// chat.send 幂等窗口：prompt 完全相同的重复投递（双击 / 焦点丢失重发 / 前端重试）在窗口内只发一次
+// 只拦「刚发出去那一下」：投递失败不会入账，所以失败后重试不受影响；窗口过后同一份工作单可以再发。
+const SEND_DEDUPE_MS = 20 * 1000
+const recentSends = new Map()
+
+/** 稳定指纹：同一份 prompt 无论发几次都得到同一个 key（不用 crypto，省一次 import）。 */
+function textFingerprint(text) {
+  let h1 = 0x811c9dc5
+  let h2 = 0x01000193
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i)
+    h1 = Math.imul(h1 ^ code, 0x01000193) >>> 0
+    h2 = Math.imul(h2 + code, 0x85ebca6b) >>> 0
+  }
+  return `${h1.toString(16)}-${h2.toString(16)}-${text.length}`
+}
+
+/** 定期清理过期记录，避免长跑进程里 Map 只增不减。 */
+function pruneRecentSends(now = Date.now()) {
+  if (recentSends.size < 64) return
+  for (const [key, row] of recentSends) {
+    if (!row || now - row.at > SEND_DEDUPE_MS) recentSends.delete(key)
+  }
+}
 
 /** 回环 Host 白名单（兜底鉴权；正常路径由 connection.requestRejection 判定）。 */
 const LOOPBACK_HOST = /^(127\.0\.0\.1|localhost|\[::1\]|\[::ffff:127\.0\.0\.1\])(:\d+)?$/i
@@ -1081,6 +1105,22 @@ async function chatSend(ctx, s, root, payload) {
   if (!prompt) throw invalid('缺少 prompt：无法投递空消息')
   if (payload?.dryRun) return { dryRun: true, prompt, workspacePath, projectId: projectId || null }
 
+  // 幂等：同一作品、同一份工作单在窗口内重复投递只认第一次。
+  // 双击「开新书 / 从头写下一章」、前端重试、宿主重放，都会走到这里。
+  const dedupeKey = `${projectId || ''}|${String(payload?.workorder ?? '')}|${textFingerprint(prompt)}`
+  const recent = recentSends.get(dedupeKey)
+  if (recent && Date.now() - recent.at < SEND_DEDUPE_MS) {
+    console.warn('[novel-desk] chat.send 拦截重复投递', { workorder: payload?.workorder ?? null, projectId: projectId || null })
+    return {
+      sent: true,
+      deduped: true,
+      sessionId: recent.sessionId,
+      created: false,
+      workspacePath,
+      projectId: projectId || null,
+    }
+  }
+
   const controller = ctx?.get?.('sessionController')
   if (!controller || (typeof controller.list !== 'function' && typeof controller.create !== 'function')) {
     throw invalid('宿主未提供会话服务（sessionController），无法发送到对话')
@@ -1171,6 +1211,8 @@ async function chatSend(ctx, s, root, payload) {
   for (const target of queue) {
     try {
       await deliver(target)
+      pruneRecentSends()
+      recentSends.set(dedupeKey, { at: Date.now(), sessionId: target })
       return { sent: true, sessionId: target, created, workspacePath, projectId: projectId || null }
     } catch (error) {
       failures.push(`${target}：${error?.message ?? error}`)

@@ -24,7 +24,10 @@ function fakeCtx(rows, options = {}) {
   return { ctx, sent, created, rows }
 }
 
-const base = (over) => ({ op: 'chat.send', payload: { prompt: '测试工作单', ...over } })
+// 每个用例用不同的 prompt：chat.send 有 20 秒幂等窗口（同一份 prompt 只投一次），
+// 用例之间共用同一串会被前一个用例拦掉。
+let promptSeq = 0
+const base = (over) => ({ op: 'chat.send', payload: { prompt: `测试工作单-${(promptSeq += 1)}`, ...over } })
 
 test('chat.send 跳过子代理会话，选普通会话', async () => {
   const { ctx, sent } = fakeCtx([
@@ -109,6 +112,26 @@ test('chat.send 指定别的工作区的会话会被拒绝', async () => {
   )
   const result = await handleRpc({ op: 'chat.send', payload: { projectId, prompt: '工作单' } }, ctx, { root })
   assert.equal(result.sessionId, 'mine-1')
+})
+
+test('chat.send 同一份工作单在幂等窗口内只投递一次', async () => {
+  const { ctx, sent } = fakeCtx([
+    { sessionId: 'main-1', updatedAt: '2026-10-24T10:00:00Z', agentAvailable: true, cwd: '/w' },
+  ])
+  const root = '/tmp/nd-chat-test'
+  const first = await handleRpc({ op: 'chat.send', payload: { prompt: '重复投递检查' } }, ctx, { root })
+  assert.equal(first.sent, true)
+  assert.equal(first.deduped, undefined)
+  const second = await handleRpc({ op: 'chat.send', payload: { prompt: '重复投递检查' } }, ctx, { root })
+  assert.equal(second.sent, true)
+  assert.equal(second.deduped, true)
+  assert.equal(second.sessionId, first.sessionId)
+  // 只投了一次（第二次没有真正 prompt）
+  assert.deepEqual(sent, ['main-1'])
+  // 内容不同就不算重复
+  const third = await handleRpc({ op: 'chat.send', payload: { prompt: '重复投递检查（改了两个字）' } }, ctx, { root })
+  assert.equal(third.deduped, undefined)
+  assert.equal(sent.length, 2)
 })
 
 test('chat.sessions 只列本作品工作区的会话', async () => {
