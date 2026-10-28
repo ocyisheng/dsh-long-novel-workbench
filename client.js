@@ -105,6 +105,9 @@ window.__ModuleLoader__.load({
         const kind = String(item.kind || '')
         const patch = patchValue(item.patch) || patchValue(item.item)
         if (patch) return { ...item, kind, patch }
+        // 带了 patch/item 键却取不出对象：原样留着让「格式不合法」提示兜住，
+        // 别学以前的「整条当 patch」——那会把 {id, patch:"一大段 JSON"} 画成几千字。
+        if ('patch' in item || 'item' in item) return { ...item, kind, patch: item.patch ?? item.item }
         const rest = { ...item }
         delete rest.kind
         return { kind, patch: rest }
