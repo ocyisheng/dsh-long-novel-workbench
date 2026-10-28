@@ -51,11 +51,18 @@ function loadModule() {
     clearInterval,
     confirm: () => true,
   }
+  // React 桩：默认所有成员都是 () => null 的空函数；Component 必须是真的类，
+  // 否则客户端里的 class OverlayBoundary extends React.Component 在装配时会直接抛 TypeError。
+  class StubComponent {
+    constructor(props) { this.props = props || {}; this.state = {} }
+    setState() {}
+  }
   const react = new Proxy(
     {},
     {
       get: (_target, key) => {
         if (key === '__esModule') return true
+        if (key === 'Component' || key === 'PureComponent') return StubComponent
         return () => null
       },
     },
@@ -275,10 +282,14 @@ test('装配：inject slots + 注册两个入口 + 样式注入', () => {
   assert.equal(appended.length, 1)
   assert.ok(appended[0].textContent.length > 5000)
   assert.ok(appended[0].textContent.includes('.nd-read{'))
-  // 2026-10 起：DSH 桌面壳里只留一个「在默认浏览器打开」的入口；浮层只在浏览器标签里挂。
-  assert.deepEqual(registered.map((r) => r.name), ['sidebar.footer.action'])
-  assert.deepEqual(registered.map((r) => r.id), ['novel-desk'])
+  // 2026-10 起：桌面版内嵌 —— 浮层在所有环境都挂（Electron 里就嵌在桌面壳内，不再另开系统浏览器）；
+  // 只有显式工作台链接（#novel-desk=1）才自动铺开，否则点侧栏入口才打开。
+  assert.deepEqual(registered.map((r) => r.name), ['sidebar.footer.action', 'shell.overlay'])
+  assert.deepEqual(registered.map((r) => r.id), ['novel-desk', 'novel-desk'])
   for (const entry of registered) assert.equal(typeof entry.comp, 'function', `${entry.name} 组件应为函数`)
+  // 浮层外面必须包一层渲染兜底：某页抛异常时只换掉工作台内容，别让整棵浮层被 React 卸载
+  const overlayComp = registered.find((r) => r.name === 'shell.overlay')
+  assert.match(String(overlayComp.comp), /OverlayBoundary/, '浮层要包 OverlayBoundary')
   assert.equal(effects.length, 1)
 })
 
