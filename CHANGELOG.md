@@ -6,6 +6,19 @@
 版本号遵循 [语义化版本（SemVer）](https://semver.org/lang/zh-CN/)。
 数据格式尽量保持向后兼容；0.6.11 → 0.7.1 的数据形态变化见 0.7.1 条目（附迁移脚本）。
 
+## [0.8.3] - 2026-10-28
+
+### 变更
+
+- **client.js 减负**（纯内部整理，界面与行为零变化）：文件 572 KB → 525 KB（约 -8%），删掉 12 处已经没有人引用的声明——旧意见页 `OpinionsPage`（531 行）、`ChapterPicker`、`PlainText`、`ledgerFixSummary`、`fmtScalar`、`labelOf`、`readerNotes`、`mapBoxDistance`、`mapInside`、`lastSessionHint`、`LOCATION_TYPE_LABEL`。
+- 剪掉 80 条指向已删页面/已改类名的残留 CSS 规则（约 6 KB）：旧意见页的 `.nd-opinion-*`、旧世界地图外壳 `.nd-map-wrap` / `.nd-map-point` / `.nd-map-region` 等、旧地点卡 `.nd-loc-*`（现用 `.nd-local-*`）、旧保存态 `.nd-edit-state`（现用 `.nd-pill-*`）、旧分栏 `.nd-diffs` / `.nd-diff-why` 等。用「类名在 JS 侧完全拼不出来」为判据，动态类（`nd-btn-${kind}` 这类）全部排除在外。
+- 文件头补一张 10 段的结构目录（常量 / 图标 / 小工具 / 导出正文 / 通用 hooks·宿主会话·控件 / 导出 UI·开新书 / 侧栏与外壳 / 各页面 / 样式 / 注册），并写明「单文件是硬约束」：宿主只加载 `exports["./client"]` 指向的那一个模块，没有构建、也不支持相对 import。
+- 修正几处过期段落横幅（删掉「意见页」残留、账本/设置的旧编号），并在样式段记下一个坑：六个 CSS 常量的**定义顺序**和 `apply()` 里的**层叠顺序**不一致——主题层盖住前五层，移动端断点在主题层之后。
+
+### 修复
+
+- `test/client.test.js` 里「提案页账本修订解析与 store 同口径」仍在断言 0.7.3 就已删除的 `ledgerFixSummary`，改成只校验 `proposalLedgerFixes`（反断言在「提案页读法」那条里）。
+
 ## [0.8.2] - 2026-10-28
 
 ### 新增

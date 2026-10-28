@@ -256,6 +256,8 @@ async function main() {
     { name: 'settings', page: 'settings' },
     { name: 'overview', page: 'overview' },
     { name: 'ledger', page: 'ledger' },
+  { name: 'ledger-map', page: 'ledger', tab: '世界地图' },
+  { name: 'ledger-characters', page: 'ledger', tab: '人物卡' },
   ]
   const profile = join(work, 'chrome')
   await mkdir(join(work, 'shots'), { recursive: true })

@@ -248,7 +248,7 @@ cd dsh-long-novel-workbench
 npm run check       # node --check：index.js / client.js / lib/*.js 语法检查
 ```
 
-> **测试状态（0.7.7）**：`node --test test/client.test.js` 为 **pass 14 / fail 9**。失败的 9 条是 0.6 时期写死的行为断言（体积上限、41 个 op 的契约清单、ChapterPicker、界面不生成提案等），在 0.7 重构时就已失效，与当前改动无关；新增的改动都配了对应的静态断言（主题层接线、图标注入、提案页读法）。`e2e` / `smoke` 脚本依赖真实作品数据与无头 Chrome，不随发布运行。
+> **测试状态（0.8.3）**：`node --test test/client.test.js` 为 **pass 16 / fail 9**；全量 `node --test test/*.test.js` 为 **171 tests / pass 104 / fail 67**。失败的 60 多条集中在 `store` / `e2e` / `review-flow` 这些 0.6 时期写死的行为断言（体积上限、41 个 op 的契约清单、ChapterPicker、界面不生成提案、旧导出格式等），在 0.7 重构时就已失效，与当前改动无关；新增的改动都配了对应的断言（主题层接线、图标注入、提案页读法、撤销采纳、防重复投递、侧栏新建作品）。`e2e` / `smoke` 脚本依赖真实作品数据与无头 Chrome，不随发布运行。
 
 ### 发布方式
 

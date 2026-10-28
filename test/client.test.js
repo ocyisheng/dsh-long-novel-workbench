@@ -235,8 +235,8 @@ test('提案页账本修订解析与 store 同口径（items 写法也能显示�
   const end = source.indexOf('const RUN_KIND')
   assert.ok(start > 0 && end > start, 'client.js 缺少 LEDGER_FIX_KINDS / proposalLedgerFixes 区块')
   const block = source.slice(start, end)
-  const factory = new Function(`${block}\nreturn { proposalLedgerFixes, ledgerFixSummary }`)
-  const { proposalLedgerFixes, ledgerFixSummary } = factory()
+  const factory = new Function(`${block}\nreturn { proposalLedgerFixes }`)
+  const { proposalLedgerFixes } = factory()
 
   // items=[{kind,id,patch}]（propose 工具写法）
   assert.deepEqual(proposalLedgerFixes({ items: [{ kind: 'characters', id: 'c1', patch: { name: '陈默' } }] }), [
@@ -249,9 +249,8 @@ test('提案页账本修订解析与 store 同口径（items 写法也能显示�
   // 空 / 非法输入
   assert.deepEqual(proposalLedgerFixes({ items: [] }), [])
   assert.deepEqual(proposalLedgerFixes(null), [])
-  // 摘要：带类型与 id，正文截断
-  assert.match(ledgerFixSummary({ kind: 'characters', id: 'c1', patch: { name: '陈默' } }), /^characters · c1 → /)
-  assert.equal(ledgerFixSummary({ kind: 'facts', patch: { text: 'x'.repeat(400) } }).length < 300, true)
+  // 注：ledgerFixSummary 已在 0.7.3 提案页可读化时删除（改由 LedgerFixView 逐字段渲染），
+  // 这里不再断言它；对应的反断言在「提案页读法」那条测试里。
 })
 
 

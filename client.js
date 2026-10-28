@@ -4,6 +4,22 @@
  * 全屏工作台：左侧导航（正文 / 意见 / 提案 / 全文动作 / 账本 / 总览 / 设置）。
  * React 由浏览器模块表提供，无构建、无外部依赖；正文一律纯文本渲染，禁止 Markdown 解析。
  * 所有数据走同源 RPC：POST /novel-desk/api，body { op, payload }。
+ *
+ * 单文件是硬约束：宿主只加载 package.json 里 exports["./client"] 指到的那一个模块，
+ * 没有构建步骤、也不支持相对 import，所以按「段落横幅」组织，改之前先看下面这张表。
+ *
+ *   1. 常量             LS / PAGES / ROUTES / 账本字段表
+ *   2. 图标             ICON_SVG（内联 lucide 路径）+ Icon / withIcon
+ *   3. 小工具           api() / useAsync / 格式化 / 提案数据归一
+ *   4. 导出正文         纯前端导出 TXT / Markdown / EPUB / DOCX
+ *   5. 通用 hooks / 宿主会话 / 基础控件（Btn、Tag、Tabs、Modal…）
+ *   6. 导出 UI、开新书向导
+ *   7. 侧栏入口 + 全局开合状态 + 工作台外壳（顶栏、导航、页面路由）
+ *   8. 各页面            正文 / 大纲 / 问题 / 提案（含可读化渲染） / 全文动作 / 世界地图 / 账本 / 设置 / 总览
+ *   9. 样式              定义顺序 CSS → MAP_CSS → CSS_EXTRA → PAPER_CSS → MOBILE_CSS → THEME_CSS；
+ *                        层叠顺序却是 CSS → CSS_EXTRA → PAPER_CSS → MAP_CSS → THEME_CSS → MOBILE_CSS
+ *                        （见 apply()）—— 主题层盖住前面所有层，移动端断点最后再盖一次
+ *  10. 注册              slots 注入 + 样式挂载
  */
 
 window.__ModuleLoader__.load({
@@ -113,11 +129,6 @@ window.__ModuleLoader__.load({
         return { kind, patch: rest }
       })
     }
-    function ledgerFixSummary(fix) {
-      const text = JSON.stringify(fix.patch || {})
-      const label = fix.id || fix.patch?.id || fix.patch?.name || fix.patch?.title || fix.patch?.subject || ''
-      return `${fix.kind || '?'}${label ? ` · ${label}` : ''} → ${text.length > 240 ? `${text.slice(0, 240)}…` : text}`
-    }
     const RUN_KIND = { continue: '从头写', expand: '扩写', rewrite: '改写', rephrase: '改写' }
     const RUN_VARIANT = { style: '文风', logic: '逻辑与事实', structure: '结构与节奏' }
     const RUN_STATUS = { idle: '未开始', preparing: '准备中', ready: '已就绪', running: '进行中', paused: '已暂停', done: '已完成', failed: '失败' }
@@ -156,7 +167,6 @@ window.__ModuleLoader__.load({
       ['capital', '都城'], ['city', '城市'], ['town', '城镇'], ['village', '村庄'],
       ['pass', '关隘'], ['temple', '寺庙'], ['mountain', '山岭'], ['river', '河流'], ['sea', '海域'], ['other', '其他'],
     ]
-    const LOCATION_TYPE_LABEL = Object.fromEntries(LOCATION_TYPES)
     const CHAPTER_STATUS = { draft: '草稿', written: '已写', reviewed: '已审', revised: '已改', done: '定稿', final: '定稿' }
     const CHAPTER_STATUS_TONE = { draft: 'muted', written: 'brand', reviewed: 'ok', revised: 'warn', done: 'ok' }
 
@@ -871,9 +881,6 @@ window.__ModuleLoader__.load({
     function closeDesk() {
       setOpen(false)
     }
-    function lastSessionHint(sessionId) {
-      return sessionId ? `（会话 ${String(sessionId).slice(0, 8)}）` : ''
-    }
 
     /** 发到对话的目标选择：auto=最近在用，new=新开，其它=指定会话 */
     function TargetPicker({ projectId, value, onChange }) {
@@ -1434,12 +1441,6 @@ window.__ModuleLoader__.load({
           ),
         ),
       )
-    }
-    // 纯文本渲染：只按空行分段，不解析任何 Markdown 语法。
-    function PlainText({ text, className }) {
-      const paragraphs = useMemo(() => splitParagraphs(text), [text])
-      if (paragraphs.length === 0) return h('div', { className: className || 'nd-plain' }, '（空）')
-      return h('div', { className: className || 'nd-plain' }, paragraphs.map((p, i) => h('p', { key: i }, p)))
     }
     function renderSegments(text, query) {
       const value = String(text || '')
@@ -2491,7 +2492,6 @@ window.__ModuleLoader__.load({
       )
       const chapterReviews = useMemo(() => reviewsList.filter((rv) => chapterNo(rv) === active), [reviewsList, active])
       const chapterProposals = useMemo(() => proposalsList.filter((p) => chapterNo(p) === active), [proposalsList, active])
-      const readerNotes = chapterReviews.filter((rv) => rv.route === 'reader' && (!rv.status || rv.status === 'open'))
       const routeCounts = useMemo(() => {
         const counts = {}
         for (const route of ROUTES) counts[route.id] = 0
@@ -3109,25 +3109,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    // 章节勾选器：审阅/复测范围一律由用户自己选，不预设章数
-    function ChapterPicker({ chapters, stats, value, onChange }) {
-      const picked = new Set(value)
-      const toggleChapter = (n) => onChange(picked.has(n) ? value.filter((x) => x !== n) : [...value, n].sort((a, b) => a - b))
-      if (!chapters.length) return h('p', { className: 'nd-hint' }, '这本书还没有章节：先写正文，再回来审。')
-      return h('div', { className: 'nd-chapter-picker', style: { maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' } },
-        chapters.map((row) => {
-          const stat = stats.get(row.chapter)
-          const mark = stat && stat.open ? ` ｜ ${stat.open} 条待处理` : stat ? ' ｜ 已审' : ' ｜ 未审'
-          return h('label', { key: row.chapter, className: 'nd-form-row nd-picker-row' },
-            h(Check, { checked: picked.has(row.chapter), onChange: () => toggleChapter(row.chapter) }),
-            h('span', null, `第 ${row.chapter} 章${row.title ? ` · ${row.title}` : ''}`),
-            h('span', { className: 'nd-hint' }, `${Number(row.words) || 0} 字${mark}`),
-          )
-        }),
-      )
-    }
 
-    // ── 意见页 ────────────────────────────────────────────────
     // ── 大纲页：用户可改；AI 通过 ledger-fix 提案改，批准后入库 ──
     function OutlinesPage({ projectId, onChanged }) {
       const res = useAsync(() => api('outline.list', scope(projectId)), [projectId])
@@ -3200,537 +3182,6 @@ window.__ModuleLoader__.load({
       )
     }
 
-    // ── 意见页：AI 意见 / 作者意见 分开；AI 意见分 去AI化 / 事实逻辑 / 注意力（冷读）──
-    function OpinionsPage({ projectId, toc, pageArg, openChapter, openChapterAt, go, onChanged }) {
-      const [notice, setNotice] = useState(null)
-      const [busy, setBusy] = useState('')
-      const [who, setWho] = useState('ai')
-      const [cat, setCat] = useState('all')
-      const [status, setStatus] = useState('all')
-      const [chapterFilter, setChapterFilter] = useState('')
-      const [picked, setPicked] = useState([])
-      const [noteFor, setNoteFor] = useState('')
-      const [noteText, setNoteText] = useState('')
-      const [suggestFor, setSuggestFor] = useState('')
-      const [suggestRole, setSuggestRole] = useState('')
-      const [suggestText, setSuggestText] = useState('')
-      const [suggestScope, setSuggestScope] = useState('ai')
-      const [suggestDecision, setSuggestDecision] = useState('')
-      const [coldOpen, setColdOpen] = useState(Boolean(pageArg && pageArg.recheck))
-      const [coldFocus, setColdFocus] = useState('')
-      const [workorder, setWorkorder] = useState(null)
-      const [target, setTarget] = useState('')
-      const res = useAsync(() => api('opinions.list', scope(projectId)), [projectId])
-      // 本地检查只在作者点「扫描」时跑；结果按作品缓存到 localStorage，切页/重进不用重扫
-      const LOCAL_CACHE_VERSION = 2
-      const localCacheKey = `nd.localChecks.${projectId}`
-      const readLocalCache = () => {
-        try {
-          const raw = lsGet(localCacheKey, '')
-          const value = raw ? JSON.parse(raw) : null
-          return value && value.version === LOCAL_CACHE_VERSION && Array.isArray(value.items) ? value : null
-        } catch { return null }
-      }
-      const [localChecks, setLocalChecks] = useState(readLocalCache)
-      const [localScanning, setLocalScanning] = useState(false)
-      const localFormatAt = (value) => {
-        const stamp = value && value.scannedAt ? new Date(value.scannedAt) : null
-        return stamp && !Number.isNaN(stamp.getTime()) ? stamp.toLocaleString() : ''
-      }
-      const [localAt, setLocalAt] = useState(() => localFormatAt(readLocalCache()))
-      const rows = res.data && Array.isArray(res.data.rows) ? res.data.rows : []
-      const counts = (res.data && res.data.counts) || {}
-      const titleOf = (chapter) => {
-        const row = (toc || []).find((item) => chapterNo(item) === Number(chapter))
-        return row ? chapterTitle(row) : ''
-      }
-      const categoryOf = (row) => {
-        const role = String(row.role || '')
-        if (role === 'ai-style' || role === 'AI 味' || role === '去AI化') return 'ai-style'
-        if (role === 'logic' || role === '事实逻辑' || role === '逻辑') return 'logic'
-        if (role === '冷读审稿人' || role === 'attention' || role === '注意力') return 'attention'
-        if (row.kind === 'highlight') return 'attention'
-        return 'ai-style'
-      }
-      const sourceRows = rows.filter((row) => (who === 'author' ? row.origin === 'user' : row.origin !== 'user'))
-      const filtered = sourceRows.filter((row) => {
-        if (who === 'ai' && cat !== 'all' && categoryOf(row) !== cat) return false
-        if (status !== 'all' && String(row.status) !== status) return false
-        if (chapterFilter && String(row.chapter) !== String(chapterFilter)) return false
-        return true
-      })
-      const STATUS_LABEL = { open: '待处理', accepted: '已采纳', rejected: '已驳回', merged: '已合并', stale: '失效', resolved: '已处理' }
-      const visibleIds = filtered.map((row) => String(row.id))
-      const allVisibleChecked = visibleIds.length > 0 && visibleIds.every((id) => picked.includes(id))
-      const toggleAllVisible = () => setPicked((prev) => (allVisibleChecked ? prev.filter((id) => !visibleIds.includes(id)) : [...new Set([...prev, ...visibleIds])]))
-      const groups = []
-      const map = new Map()
-      for (const row of filtered) {
-        const key = `${row.chapter}:${row.para == null ? 'x' : row.para}`
-        if (!map.has(key)) {
-          map.set(key, { key, chapter: row.chapter, para: row.para, opinions: [] })
-          groups.push(map.get(key))
-        }
-        map.get(key).opinions.push(row)
-      }
-      const reload = () => { res.reload(); if (onChanged) onChanged() }
-      const itemParas = (row) => (Array.isArray(row?.paras) && row.paras.length ? row.paras : [row?.para]).filter((p) => Number.isInteger(Number(p))).map(Number)
-      const itemMarks = (row) => itemParas(row).map((para) => ({ chapter: row.chapter, para, quote: row.quote, kind: row.kind, message: row.message }))
-      const scanLocal = async () => {
-        if (!projectId || localScanning) return
-        setLocalScanning(true); setNotice(null)
-        try {
-          const value = await api('checks.local', scope(projectId))
-          const saved = { ...(value || { items: [], counts: {} }), version: LOCAL_CACHE_VERSION, scannedAt: new Date().toISOString() }
-          setLocalChecks(saved)
-          setLocalAt(localFormatAt(saved))
-          try { lsSet(localCacheKey, JSON.stringify(saved)) } catch { /* 存不下就只留内存 */ }
-        } catch (error) {
-          setNotice({ tone: 'error', text: friendlyError(error) })
-        } finally { setLocalScanning(false) }
-      }
-      const toggle = (id) => setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-      const accept = async (id) => {
-        setBusy(id); setNotice(null)
-        try {
-          const value = await api('opinions.accept', scope(projectId, { id }))
-          if (value && value.applied) setNotice({ tone: 'ok', text: `已定位第 ${value.applied.chapter} 章第 ${Number(value.applied.para) + 1} 段并替换（相似度 ${value.applied.score}%）${value.resolved ? `；同时把 ${value.resolved} 条相关意见标为已处理` : ''}` })
-          else setNotice({ tone: 'ok', text: `已采纳${value && value.resolved ? `；同时把 ${value.resolved} 条相关意见标为已处理` : ''}` })
-          reload()
-        }
-        catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }); reload() }
-        finally { setBusy('') }
-      }
-      const reject = async (id) => {
-        setBusy(id); setNotice(null)
-        try { await api('opinions.reject', scope(projectId, { id })); setNotice({ tone: 'ok', text: '已驳回' }); reload() }
-        catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const mergePicked = async (group) => {
-        const ids = group.opinions.filter((row) => picked.includes(row.id)).map((row) => row.id)
-        if (ids.length < 2) return
-        const text = window.prompt('合并后的意见（可修改）：', group.opinions.filter((row) => ids.includes(row.id)).map((row) => `· ${row.text}`).join('\n'))
-        if (text == null) return
-        setBusy('merge'); setNotice(null)
-        try { await api('opinions.merge', scope(projectId, { ids, text })); setPicked([]); setNotice({ tone: 'ok', text: '已合并成一条意见' }); reload() }
-        catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const chaptersForWorkorder = () => (toc || []).map((row) => ({ chapter: chapterNo(row), title: chapterTitle(row), words: Number(row.words) || 0, path: row.path || row.file || '' })).filter((row) => row.chapter > 0)
-      const makeColdWorkorder = async () => {
-        if (busy) return
-        setBusy('cold'); setNotice(null)
-        try {
-          const value = await api('coldRead.prepare', scope(projectId, { scope: 'book' }))
-          const sent = await sendToChat(projectId, { prompt: String(value.prompt || ''), preferContext: true })
-          setColdOpen(false)
-          setNotice({
-            tone: 'ok',
-            text: `已导出全文稿（${value.words} 字）并发给对话：${value.filePath}${sent && sent.created ? '（新开对话）' : ''}。AI 会一次读完并直接回答评分/接纳/不足。`,
-          })
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const makeFixWorkorder = async () => {
-        if (!projectId || busy) return
-        const pickedRows = rows.filter((row) => picked.includes(row.id) && Number(row.chapter) > 0)
-        if (!pickedRows.length) {
-          setNotice({ tone: 'warn', text: '先在意见列表里勾选要生成改法的意见（章级/整章总结不能直接改，先按章拆分）' })
-          return
-        }
-        const chapterNums = [...new Set(pickedRows.map((row) => Number(row.chapter)))]
-        if (pickedRows.length > 25 || chapterNums.length > 5) {
-          setNotice({ tone: 'warn', text: `一次最多批量 25 条 / 5 章（当前 ${pickedRows.length} 条、${chapterNums.length} 章）：请用章节筛选，或按章分批，避免工单过长和烧 token。` })
-          return
-        }
-        setBusy('fix'); setNotice(null)
-        try {
-          const items = pickedRows.map((row) => ({ id: row.id, chapter: Number(row.chapter), para: row.para, anchor: row.anchor, text: row.text, kind: row.kind }))
-          const chapters = (toc || [])
-            .filter((row) => chapterNums.includes(chapterNo(row)))
-            .map((row) => ({ chapter: chapterNo(row), title: chapterTitle(row), words: Number(row.words) || 0, path: row.path || row.file || '' }))
-          const value = await api('chat.send', { projectId, workorder: 'opinionFixWorkorder', items, chapters, dryRun: true })
-          setWorkorder({ title: `批量改法工作单（${items.length} 条 / ${chapterNums.length} 章：第 ${chapterNums.join('、')} 章）`, text: String(value.prompt || ''), sending: false })
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const coldReadChapter = async (chapter) => {
-        if (!projectId || busy) return
-        setBusy(`cold-${chapter}`); setNotice(null)
-        try {
-          const value = await api('coldRead.prepare', scope(projectId, { scope: 'chapter', chapter }))
-          const sent = await sendToChat(projectId, { prompt: String(value.prompt || '') })
-          setNotice({ tone: 'ok', text: `已导出第 ${chapter} 章（${value.words} 字）并发给对话${sent && sent.created ? '（新开对话）' : ''}。` })
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const splitColdReadLocal = async (row) => {
-        if (!projectId || busy) return
-        const lines = String(row.text || '').split('\n').map((line) => line.trim()).filter(Boolean)
-        const items = []
-        for (const line of lines) {
-          const hit = line.match(/^第\s*(\d+)\s*章[:：]\s*(.+)$/)
-          if (!hit) continue
-          items.push({ chapter: Number(hit[1]), text: hit[2].slice(0, 200) })
-        }
-        if (!items.length) { setNotice({ tone: 'warn', text: '这条冷读没有带章号的条目，先点「按章拆分」让 AI 拆。' }); return }
-        setBusy(`splitlocal-${row.id}`); setNotice(null)
-        try {
-          const value = await api('coldRead.splitLocal', scope(projectId, { id: row.id, items }))
-          setNotice({ tone: 'ok', text: `已拆出 ${value.added} 条按章子意见，进待处理。` })
-          res.reload()
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const splitColdRead = async (row) => {
-        if (!projectId || busy) return
-        setBusy(`split-${row.id}`); setNotice(null)
-        try {
-          const value = await api('coldRead.split', scope(projectId, { id: row.id }))
-          const prompt = String(value.prompt || '')
-          setWorkorder({ title: '冷读意见 · 按章拆分工作单', text: prompt, sending: false })
-          await sendToChat(projectId, { prompt, preferContext: true }).catch(() => {})
-          setNotice({ tone: 'ok', text: '已把拆分工作单发到对话：AI 会按章拆成子意见，进意见页待处理。' })
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const sendWorkorder = async () => {
-        if (!workorder) return
-        setWorkorder((prev) => (prev ? { ...prev, sending: true } : prev))
-        try {
-          await sendToChat(projectId, { prompt: workorder.text }, target)
-          const parentId = workorder.parentId
-          setWorkorder(null)
-          if (parentId) {
-            await api('opinions.patch', scope(projectId, { id: parentId, patch: { status: 'resolved' } })).catch(() => null)
-            setNotice({ tone: 'ok', text: '已发到对话；原意见转出为「已随处理」，新建议会进待处理。' })
-          } else {
-            setNotice({ tone: 'ok', text: '冷读工作单已发到对话' })
-          }
-        } catch (error) {
-          setWorkorder((prev) => (prev ? { ...prev, sending: false } : prev))
-          setNotice({ tone: 'error', text: friendlyError(error) })
-        }
-      }
-      const makeReviewWorkorder = async (source, chapterList = [], focus = '') => {
-        if (!projectId || busy) return
-        setBusy(`review-${source}`)
-        setNotice(null)
-        try {
-          const allRows = chaptersForWorkorder()
-          const rows = Array.isArray(chapterList) && chapterList.length
-            ? allRows.filter((row) => chapterList.map(Number).includes(row.chapter))
-            : allRows
-          if (!rows.length) { setNotice({ tone: 'warn', text: '没有可审核的章节' }); return }
-          const value = await api('chat.send', { projectId, workorder: 'reviewWorkorder', chapters: rows, sources: [source], focus: focus || undefined, dryRun: true })
-          const label = source === 'logic' ? '逻辑审核' : source === 'ai-style' ? '去 AI 化' : '审核'
-          const scopeLabel = Array.isArray(chapterList) && chapterList.length ? `第 ${chapterList.map(Number).join('、')} 章` : `全文（${rows.length} 章）`
-          setWorkorder({ title: `${scopeLabel} ${label}工作单`, text: String(value.prompt || ''), sending: false, parentId: row.id })
-        } catch (error) {
-          setNotice({ tone: 'error', text: friendlyError(error) })
-        } finally {
-          setBusy('')
-        }
-      }
-
-      const saveNote = async (id) => {
-        setBusy(`note-${id}`); setNotice(null)
-        try {
-          await api('opinions.note', scope(projectId, { id, note: noteText }))
-          setNoteFor(''); setNoteText('')
-          setNotice({ tone: 'ok', text: '已保存你的建议' })
-          res.reload()
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const ROLE_TO_SOURCE = { continuity: 'logic', 'ai-auditor': 'ai-style', 'cold-reader': 'attention', stylist: 'reader' }
-      const SUGGEST_ROLES = [
-        { id: 'author', name: '作者', hint: '从人物/剧情意图出发，给出具体改法' },
-        { id: 'editor', name: '责任编辑', hint: '判断值不值得改、改哪、怎么改' },
-        { id: 'continuity', name: '事实逻辑设计师', hint: '因果 / 动机 / 连续性 / 设定矛盾' },
-        { id: 'ai-auditor', name: '审核 AI 化的 AI', hint: 'AI 味 / 套话 / 文笔机械' },
-        { id: 'cold-reader', name: '冷读审稿人', hint: '读者会不会继续读 / 哪里弃读' },
-        { id: 'stylist', name: '文笔文风优化师', hint: '语感 / 节奏 / 用词' },
-      ]
-      const scopeOf = (row) => (Number(row.chapter) === 0 ? 'book' : row.para == null ? 'chapter' : 'paragraph')
-      const openSuggest = (row) => {
-        setSuggestFor(row.id)
-        setSuggestRole('')
-        setSuggestScope(scopeOf(row))
-        setSuggestDecision('')
-        setSuggestText(String(row.authorNote || ''))
-      }
-      const submitSuggest = async () => {
-        const row = rows.find((item) => item.id === suggestFor)
-        if (!row) return
-        if (!suggestRole) { setNotice({ tone: 'warn', text: '先选一个子 agent（这次交给谁出建议）' }); return }
-        if (busy) return
-        const source = ROLE_TO_SOURCE[suggestRole] || (categoryOf(row) === 'logic' ? 'logic' : categoryOf(row) === 'attention' ? 'attention' : 'ai-style')
-        const roleName = (SUGGEST_ROLES.find((item) => item.id === suggestRole) || {}).name || suggestRole
-        const allRows = chaptersForWorkorder()
-        const chapterNumbers = new Set([Number(row.chapter)])
-        if (suggestScope === 'related') {
-          const related = await api('opinions.relatedChapters', scope(projectId, { id: row.id })).catch(() => null)
-          for (const item of (related && related.chapters) || []) chapterNumbers.add(Number(item.chapter))
-        }
-        const useAll = suggestScope === 'ai' || suggestScope === 'book'
-        const rowsForChapter = useAll ? allRows.filter((item) => item.chapter > 0) : allRows.filter((item) => chapterNumbers.has(item.chapter))
-        if (!rowsForChapter.length) { setNotice({ tone: 'warn', text: '这一章找不到正文' }); return }
-        if (suggestScope === 'paragraph') { chapterNumbers.clear(); chapterNumbers.add(Number(row.chapter)) }
-        const scopeRule = suggestScope === 'paragraph'
-          ? `范围：仅第${row.chapter}章第${Number(row.para) + 1}段；只改这一段，不要重审本章其它段。`
-          : suggestScope === 'ai'
-          ? '范围由你判断：先判断这条问题是本段 / 本章 / 跨章 / 全书级；允许用 novel_desk_read 读其他章节确认，但不要顺手审全书；跨章/全局问题提交 chapter=0 全书级意见并列出涉及章号。'
-          : suggestScope === 'related'
-            ? `范围：相关章节（${[...chapterNumbers].sort((a, b) => a - b).join('、')}），可读范围内章节确认；若判断是全书级问题，提交 chapter=0 并列出涉及章号。`
-            : suggestScope === 'book'
-              ? '范围：全书；允许读任意章节确认，但只处理这一条问题。'
-              : '范围：仅本条所在章。如果你判断其实是跨章/全书问题，请明确说出并列出涉及章号，不要硬塞进本章。'
-        const focus = [
-          `只针对这一条已有意见给出建议/改法，不要重审全章、不要找新问题；交给「${roleName}」判断。`,
-          String(suggestDecision || '').trim() ? `## 作者裁定（最高优先级，直接执行，不要讨论/不要比较/不要反问）\n${String(suggestDecision).trim()}` : '',
-          `- 第${row.chapter}章 第${Number(row.para) + 1}段`,
-          `- 问题：${row.text}`,
-          row.after ? `- AI 原改法：${row.after}` : '',
-          String(suggestText || '').trim() ? `- 作者建议（必须遵守）：${String(suggestText).trim()}` : '',
-          scopeRule,
-          '输出：1 条 AI 意见；如果能给整段替换就带 after，只给判断也可以。',
-        ].filter(Boolean).join('\n')
-        setBusy(`suggest-${row.id}`); setNotice(null)
-        try {
-          const value = await api('chat.send', { projectId, workorder: 'reviewWorkorder', chapters: rowsForChapter, sources: [source], roleOverride: suggestRole, focus, dryRun: true })
-          setWorkorder({ title: `第 ${row.chapter} 章 · 生成建议（${roleName}）`, text: String(value.prompt || ''), sending: false })
-          setSuggestFor('')
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-
-      const makeLocalWorkorder = async () => {
-        if (busy) return
-        setBusy('local'); setNotice(null)
-        try {
-          const items = (localChecks && Array.isArray(localChecks.items)) ? localChecks.items : []
-          if (!items.length) return
-          const chapters = [...new Set(items.map((row) => Number(row.chapter)))].filter((n) => n > 0)
-          const rowsFor = (toc || []).filter((row) => chapters.includes(chapterNo(row))).map((row) => ({ chapter: chapterNo(row), title: chapterTitle(row), words: Number(row.words) || 0, path: row.path || row.file || '' }))
-          const focus = ['本地检查发现这些可疑点，请只判这些点并给改法（不要通读全文找新问题）：', ...items.slice(0, 40).map((row) => `- 第${row.chapter}章 第${Number(row.para) + 1}段 [${row.kind === 'deai' ? '去AI化' : '事实逻辑'}] ${row.message}`)].join('\n')
-          const value = await api('chat.send', { projectId, workorder: 'reviewWorkorder', chapters: rowsFor, sources: ['logic', 'ai-style'], focus, dryRun: true })
-          setWorkorder({ title: `本地检查工作单（${chapters.length} 章 / ${items.length} 个可疑点）`, text: String(value.prompt || ''), sending: false })
-        } catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-        finally { setBusy('') }
-      }
-      const chip = (key, label, value, onClick) => h(Btn, { small: true, kind: value === key ? 'primary' : undefined, onClick: () => onClick(key) }, label)
-      const askRef = useRef(false)
-      useEffect(() => {
-        if (askRef.current) return
-        if (!pageArg) return
-        if (pageArg.coldChapter) { askRef.current = true; coldReadChapter(Number(pageArg.coldChapter)); return }
-        if (!pageArg.ask) return
-        askRef.current = true
-        const chapter = Number(pageArg.chapter) || 0
-        makeReviewWorkorder(String(pageArg.ask), chapter ? [chapter] : [])
-      }, [pageArg])
-
-      const cats = [
-        { id: 'all', label: `全部 ${sourceRows.length}` },
-        { id: 'ai-style', label: `去 AI 化 ${sourceRows.filter((row) => categoryOf(row) === 'ai-style').length}` },
-        { id: 'logic', label: `事实逻辑 ${sourceRows.filter((row) => categoryOf(row) === 'logic').length}` },
-        { id: 'attention', label: `注意力 ${sourceRows.filter((row) => categoryOf(row) === 'attention').length}` },
-      ]
-      return h('div', { className: 'nd-page nd-opinions' },
-        h('div', { className: 'nd-page-head' },
-          h('div', null,
-            h('h2', null, '意见'),
-            h('p', { className: 'nd-hint' }, '作者意见与 AI 意见分开。AI 意见只分三类：去 AI 化 / 事实逻辑 / 注意力（冷读）；AI 意见带地址和改法，采纳即替换该段。')),
-          h('div', { className: 'nd-page-actions' },
-            h(Btn, { small: true, onClick: reload, disabled: res.loading }, '刷新'),
-            h(Btn, { small: true, kind: 'primary', onClick: () => { setColdOpen(true); setColdFocus('') } }, withIcon('snowflake', ' 全文冷读（注意力）')),
-            h(Btn, { small: true, onClick: () => makeReviewWorkorder('ai-style', []), disabled: Boolean(busy) }, withIcon('bot', ' 全文去 AI 化')),
-            h(Btn, { small: true, onClick: () => makeReviewWorkorder('logic', []), disabled: Boolean(busy) }, withIcon('scale', ' 全文逻辑审核')),
-          ),
-        ),
-        notice ? h(Msg, { tone: notice.tone, onClose: () => setNotice(null) }, notice.text) : null,
-        h('div', { className: 'nd-toolbar' },
-          chip('ai', `AI 意见 ${rows.filter((row) => row.origin !== 'user').length}`, who, setWho),
-          chip('author', `作者意见 ${rows.filter((row) => row.origin === 'user').length}`, who, setWho),
-          h('span', { className: 'nd-hint' }, ' ｜ '),
-          chip('open', `待处理 ${counts.open || 0}`, status, setStatus),
-          chip('stale', `失效 ${counts.stale || 0}`, status, setStatus),
-          chip('resolved', `已随处理 ${counts.resolved || 0}`, status, setStatus),
-          chip('accepted', `已采纳 ${counts.accepted || 0}`, status, setStatus),
-          chip('rejected', `已驳回 ${counts.rejected || 0}`, status, setStatus),
-          chip('all', `全部 ${rows.length}`, status, setStatus),
-          h(Select, {
-            value: chapterFilter,
-            onChange: setChapterFilter,
-            options: [{ value: '', label: '全部章节' }, ...(toc || []).map((row) => ({ value: String(chapterNo(row)), label: `第 ${chapterNo(row)} 章` }))],
-          }),
-        ),
-        who === 'ai' ? h('div', { className: 'nd-toolbar' }, cats.map((item) => chip(item.id, item.label, cat, setCat))) : null,
-        h('div', { className: 'nd-toolbar nd-selectbar' },
-          h('label', { className: 'nd-checkline' },
-            h('input', { type: 'checkbox', checked: allVisibleChecked, onChange: toggleAllVisible }),
-            h('span', null, '全选当前'),
-          ),
-          h('span', { className: 'nd-hint' }, (() => {
-            const selectedRows = rows.filter((row) => picked.includes(row.id))
-            const chapters = [...new Set(selectedRows.map((row) => Number(row.chapter)).filter((n) => n > 0))]
-            return `已选 ${picked.length} 条${chapters.length ? ` ｜ 跨 ${chapters.length} 章（第 ${chapters.join('、')} 章）` : ''}`
-          })()),
-          h(Btn, { small: true, onClick: toggleAllVisible, disabled: !visibleIds.length }, allVisibleChecked ? '取消全选' : '全选'),
-          h(Btn, { small: true, onClick: () => setPicked([]), disabled: !picked.length }, '清空'),
-          h(Btn, { small: true, kind: 'primary', onClick: makeFixWorkorder, disabled: !picked.length || Boolean(busy) }, busy === 'fix' ? '生成中…' : withIcon('bot', ` 让 AI 批量改${picked.length ? `（${picked.length}）` : ''}`)),
-        ),
-        res.error ? h(ErrorBox, { error: res.error, onRetry: res.reload }) : null,
-        res.loading && !rows.length ? h(Loading, null, '读取意见…') : null,
-        !res.loading && !groups.length ? h('p', { className: 'nd-hint' }, who === 'author' ? '还没有作者意见：正文页切到「批注」，选中文字或点「整章意见」提交。' : '这个分类下还没有 AI 意见。去 AI 化的入口在正文选区里；事实逻辑先跑「全书同步」或让它出意见；注意力用右上角冷读。') : null,
-        h('section', { className: 'nd-card' },
-          h('div', { className: 'nd-card-head' },
-            h('h3', null, withIcon('flask-conical', ' 本地检查（0 AI 成本）', 14)),
-            localChecks ? h('span', { className: 'nd-hint' }, `事实逻辑 ${localChecks.counts?.logic || 0} ｜ 去 AI 化 ${localChecks.counts?.deai || 0}${localAt ? ` ｜ 上次扫描 ${localAt}` : ''}（正文改过再点重新扫描）`) : h('span', { className: 'nd-hint' }, '只在点「扫描」时跑；结果会保留，切页回来不用重扫'),
-            h(Btn, { small: true, kind: localChecks ? undefined : 'primary', onClick: scanLocal, disabled: localScanning }, localScanning ? '扫描中…' : localChecks ? '重新扫描' : '扫描全文'),
-            localChecks && localChecks.items && localChecks.items.length && go ? h(Btn, { small: true, onClick: () => go('read', { chapter: Number(localChecks.items[0].chapter), marks: localChecks.items.flatMap((row) => itemMarks(row)) }) }, '全部高亮') : null,
-            localChecks && localChecks.items && localChecks.items.length ? h(Btn, { small: true, kind: 'primary', onClick: makeLocalWorkorder, disabled: busy === 'local' }, busy === 'local' ? '生成中…' : '让 AI 判这些点') : null,
-          ),
-          localChecks
-            ? h('p', { className: 'nd-hint' }, localChecks.items && localChecks.items.length
-              ? '每条都给到「第几章·第几段」+ 原文；点「定位」直接跳到正文那一段，作者可以自己改。'
-              : '扫完了，没发现明显问题。')
-            : h('p', { className: 'nd-hint' }, '扫描全书，找 Markdown 残留、重复段、超长段、AI 套话密度、长句过多、账本数字缺口。点一次扫一次。'),
-          localChecks && localChecks.items && localChecks.items.length
-            ? h('div', { className: 'nd-local-list' },
-                localChecks.items.slice(0, 20).map((row, index) => h('div', { className: 'nd-local-item', key: index },
-                  h(Tag, { tone: row.kind === 'deai' ? 'warn' : 'muted' }, row.kind === 'deai' ? '去 AI 化' : '事实逻辑'),
-                  h('span', { className: 'nd-hint' }, `第 ${row.chapter} 章 · 第 ${itemParas(row).map((p) => Number(p) + 1).join('、')} 段`),
-                  h('span', null, row.message),
-                  row.quote ? h('span', { className: 'nd-hint' }, `「${String(row.quote).slice(0, 40)}」`) : null,
-                  go ? h(Btn, { small: true, onClick: () => go('read', { chapter: Number(row.chapter), para: itemParas(row)[0], marks: itemMarks(row) }) }, '定位') : null,
-                )),
-                localChecks.items.length > 20 ? h('p', { className: 'nd-hint' }, `还有 ${localChecks.items.length - 20} 条；点「让 AI 判这些点」会全部带上。`) : null,
-              )
-            : null,
-        ),
-        groups.map((group) => {
-          const pickedHere = group.opinions.filter((row) => picked.includes(row.id))
-          const head = Number(group.chapter) === 0 ? '全书级' : `第 ${group.chapter} 章${group.para == null ? ' · 章级' : ` · 第 ${Number(group.para) + 1} 段`}`
-          return h('section', { className: 'nd-card', key: group.key },
-            h('div', { className: 'nd-card-head' },
-              h('h3', null, head),
-              h('span', { className: 'nd-hint' }, titleOf(group.chapter)),
-              group.para != null && openChapterAt ? h(Btn, { small: true, onClick: () => openChapterAt(group.chapter, group.para) }, '定位正文') : (group.para == null && openChapter ? h(Btn, { small: true, onClick: () => openChapter(group.chapter) }, '看正文') : null),
-              group.opinions.length >= 2 ? h('span', { className: 'nd-hint' }, `本段 ${group.opinions.length} 条，建议合并成一条完整意见`) : null,
-              pickedHere.length >= 2 ? h(Btn, { small: true, kind: 'primary', disabled: busy === 'merge', onClick: () => mergePicked(group) }, `合并所选 ${pickedHere.length}`) : null,
-            ),
-            group.opinions.map((row) => h('div', { className: `nd-opinion nd-opinion-${row.status}`, key: row.id },
-              h('div', { className: 'nd-opinion-head' },
-                h('input', { type: 'checkbox', checked: picked.includes(row.id), onChange: () => toggle(row.id), title: '选择以合并' }),
-                h(Tag, { tone: row.status === 'stale' ? 'error' : row.status === 'accepted' ? 'ok' : row.status === 'rejected' || row.status === 'resolved' ? 'muted' : 'warn' }, row.status === 'resolved' ? '已随处理' : row.status || 'open'),
-                row.origin === 'user' ? h(Tag, { tone: 'brand' }, '作者意见') : h(Tag, { tone: 'muted' }, `AI · ${categoryOf(row) === 'ai-style' ? '去 AI 化' : categoryOf(row) === 'logic' ? '事实逻辑' : '注意力'}`),
-                h(Tag, { tone: 'muted' }, Number(row.chapter) === 0 ? '全文' : row.para == null ? `第${row.chapter}章` : `第${row.chapter}章·第${Number(row.para) + 1}段`),
-                row.kind === 'highlight' ? h(Tag, { tone: 'ok' }, '高光') : null,
-                h('span', { className: 'nd-opinion-when' }, row.createdAt ? String(row.createdAt).slice(0, 10) : ''),
-              ),
-              h('p', { className: 'nd-opinion-text' }, row.text),
-              row.authorNote ? h('p', { className: 'nd-opinion-author-note' }, `我的建议：${row.authorNote}`) : null,
-              row.after ? h('div', { className: 'nd-opinion-after' }, h('div', { className: 'nd-diff-head' }, '改为'), h('pre', { className: 'nd-pre' }, row.after)) : null,
-              row.status === 'stale' ? h('p', { className: 'nd-hint nd-opinion-stale' }, `地址失效：${row.staleReason || '正文已改动'}（保留原文，可在正文重新批注）`) : null,
-              row.status === 'resolved' ? h('p', { className: 'nd-hint' }, '这条问题已随另一条意见的采纳一起处理，保留记录，不再待办。') : null,
-              noteFor === row.id
-                ? h('div', { className: 'nd-opinion-note-edit' },
-                    h('textarea', { className: 'nd-input nd-textarea', rows: 3, value: noteText, placeholder: '你的建议（例：这段别删，改成更冷的写法；或：按这个人物的性格不该示弱）', onChange: (e) => setNoteText(e.target.value) }),
-                    h('div', { className: 'nd-actions' },
-                      h(Btn, { small: true, kind: 'primary', onClick: () => saveNote(row.id), disabled: busy === `note-${row.id}` }, '保存建议'),
-                      h(Btn, { small: true, onClick: () => setNoteFor('') }, '取消'),
-                      h(Btn, { small: true, onClick: () => { setNoteFor(''); setSuggestFor(row.id); setSuggestRole(''); setSuggestText(noteText) }, disabled: Boolean(busy) }, '按我的建议生成'),
-                    ),
-                  )
-                : null,
-              h('div', { className: 'nd-opinion-actions' },
-                row.status === 'open' && row.after ? h(Btn, { small: true, kind: 'primary', disabled: busy === row.id, onClick: () => accept(row.id) }, Number(row.chapter) === 0 ? '采纳并替换（自动定位）' : '采纳并替换') : null,
-                row.status === 'open' ? h(Btn, { small: true, kind: row.after ? undefined : 'primary', disabled: Boolean(busy), onClick: () => openSuggest(row) }, row.after ? '我的建议重新生成' : '我的建议') : null,
-                row.status === 'open' ? h(Btn, { small: true, disabled: busy === row.id, onClick: () => reject(row.id) }, '驳回') : null,
-                (String(row.role || '') === '冷读审稿人' || String(row.role || '') === 'attention') && Number(row.chapter) === 0
-                  ? h(Btn, { small: true, kind: 'primary', disabled: Boolean(busy), onClick: () => splitColdReadLocal(row) }, '按章拆分')
-                  : null,
-                (String(row.role || '') === '冷读审稿人' || String(row.role || '') === 'attention') && Number(row.chapter) === 0
-                  ? h(Btn, { small: true, disabled: Boolean(busy), onClick: () => splitColdRead(row) }, '让 AI 拆')
-                  : null,
-                row.status === 'rejected' ? h(Btn, { small: true, onClick: async () => {
-                  setBusy(`reopen-${row.id}`); setNotice(null)
-                  try { await api('opinions.patch', scope(projectId, { id: row.id, patch: { status: 'open' } })); setNotice({ tone: 'ok', text: '已撤销驳回，重新放回待处理' }); res.reload() }
-                  catch (error) { setNotice({ tone: 'error', text: friendlyError(error) }) }
-                  finally { setBusy('') }
-                }, disabled: busy === `reopen-${row.id}` }, '撤销驳回') : null,
-              ),
-            )),
-          )
-        }),
-        suggestFor ? h(Modal, {
-          title: '我的建议 / 生成改动',
-          onClose: () => setSuggestFor(''),
-          footer: h(Fragment, null,
-            h(Btn, { onClick: () => setSuggestFor('') }, '取消'),
-            h(Btn, { kind: 'primary', onClick: submitSuggest, disabled: Boolean(busy) }, busy ? '生成中…' : '生成改动'),
-          ),
-        },
-          h('p', { className: 'nd-hint' }, '这次让哪个子 agent 出建议？不默认，由你选；逻辑 bug 选「事实逻辑设计师」，AI 味选「审核 AI 化的 AI」，弃读/节奏选「冷读审稿人」，语感选「文笔文风优化师」。'),
-          h(Field, { label: '子 agent' },
-            h(Select, {
-              value: suggestRole,
-              onChange: setSuggestRole,
-              options: [{ value: '', label: '请选择' }].concat(SUGGEST_ROLES.map((role) => ({ value: role.id, label: `${role.name}（${role.hint}）` }))),
-            }),
-          ),
-          h(Field, { label: '范围' },
-            h(Select, {
-              value: suggestScope,
-              onChange: setSuggestScope,
-              options: [
-                { value: 'ai', label: 'AI 判断（推荐）：局部还是全局由 AI 先判断' },
-                { value: 'paragraph', label: '仅本段（AI 判断出的段落）' },
-                { value: 'chapter', label: '仅本条所在章' },
-                { value: 'related', label: '相关章节（按人物/地点出现范围）' },
-                { value: 'book', label: '全书' },
-              ],
-            }),
-          ),
-          h(Field, { label: '作者裁定（可选，最高优先级：已定的结论，AI 直接照改）', hint: '例：年龄以 72 为准，把 73 全改成 72；不要论证，不要做生辰推演。' },
-            h(TextArea, { rows: 2, value: suggestDecision, onChange: setSuggestDecision, placeholder: '例：年龄以 72 为准；只改数字，不分析“九十年”设定。' }),
-          ),
-          h(Field, { label: '我的建议（可留空）' },
-            h(TextArea, { rows: 4, value: suggestText, onChange: setSuggestText, placeholder: '例：这里死了人下一章却像没事发生，逻辑不成立；让事实逻辑设计师判断。' }),
-          ),
-        ) : null,
-        coldOpen ? h(Modal, {
-          title: '冷读（注意力）',
-          onClose: () => setColdOpen(false),
-          footer: h(Fragment, null,
-            h(Btn, { onClick: () => setColdOpen(false) }, '取消'),
-            h(Btn, { kind: 'primary', onClick: makeColdWorkorder, disabled: busy === 'cold' }, busy === 'cold' ? '生成中…' : '生成冷读工作单'),
-          ),
-        },
-          h('p', { className: 'nd-hint' }, '把全文导出成一份 txt 交给 AI（独立审稿人/出版社编辑），一次读完直接回答：评分、接纳与否、哪里不足。结果落成 1 条冷读意见，可再按章拆分。'),
-          h('div', { className: 'nd-field' },
-            h('span', { className: 'nd-label' }, '本次关注（可留空）'),
-            h('textarea', { className: 'nd-input nd-textarea', rows: 3, value: coldFocus, placeholder: '例：重点看第 12–20 章有没有让人想继续读。', onChange: (e) => setColdFocus(e.target.value) }),
-          ),
-        ) : null,
-        workorder ? h(Modal, {
-          title: workorder.title,
-          wide: true,
-          onClose: () => setWorkorder(null),
-          footer: h(Fragment, null,
-            h(Btn, { onClick: () => copyText(workorder.text) }, '复制'),
-            h(Btn, { kind: 'primary', disabled: workorder.sending, onClick: sendWorkorder }, workorder.sending ? '发送中…' : '发送到对话'),
-          ),
-        },
-          h(TargetPicker, { projectId, value: target, onChange: setTarget }),
-          h('p', { className: 'nd-hint' }, '会话建议：冷读/复测新开会话（零上下文）；同章定点修可沿用该章上次会话；全文动作沿用同一个 run 会话。选择权在你。'),
-          h('pre', { className: 'nd-pre nd-pre-tall' }, workorder.text),
-        ) : null,
-      )
-    }
 
     // ── 0.7.1 问题页：审稿 → 问题单 → 修改稿 → 采纳 / 继续改 ──────
     // 只新增组件与页面内常量；PAGES / 页面渲染 / 正文页接线由 Lead 负责。
@@ -6056,11 +5507,6 @@ window.__ModuleLoader__.load({
       }
       return out.sort((a, b) => b.bounds.x2 - b.bounds.x1 - (a.bounds.x2 - a.bounds.x1))
     }
-    function mapBoxDistance(box, x, y) {
-      const dx = x < box.x1 ? box.x1 - x : x > box.x2 ? x - box.x2 : 0
-      const dy = y < box.y1 ? box.y1 - y : y > box.y2 ? y - box.y2 : 0
-      return Math.hypot(dx, dy)
-    }
     function mapRegionLabel(text) {
       const raw = String(text || '').trim()
       if (!raw) return '未名'
@@ -6086,10 +5532,6 @@ window.__ModuleLoader__.load({
     }
     function mapHits(box, list) {
       return list.some((other) => !(box.x2 < other.x1 || box.x1 > other.x2 || box.y2 < other.y1 || box.y1 > other.y2))
-    }
-    function mapInside(box, x, y, margin) {
-      const pad = margin || 0
-      return x >= box.x1 - pad && x <= box.x2 + pad && y >= box.y1 - pad && y <= box.y2 + pad
     }
     function mapRanges(regions, points, rivers, seed) {
       const rand = mapRandom(seed * 7919 + 13)
@@ -6701,6 +6143,35 @@ window.__ModuleLoader__.load({
       }
       return layers
     }
+    function mapAttrName(key) {
+      const map = {
+        className: 'class',
+        strokeWidth: 'stroke-width',
+        strokeOpacity: 'stroke-opacity',
+        strokeDasharray: 'stroke-dasharray',
+        strokeLinecap: 'stroke-linecap',
+        strokeLinejoin: 'stroke-linejoin',
+        fillOpacity: 'fill-opacity',
+        fontSize: 'font-size',
+        textAnchor: 'text-anchor',
+        dominantBaseline: 'dominant-baseline',
+        letterSpacing: 'letter-spacing',
+        paintOrder: 'paint-order',
+        pointerEvents: 'pointer-events',
+      }
+      return map[key] || key
+    }
+    function mapNodeMarkup(node) {
+      const attrs = Object.keys(node.a || {}).map((key) => {
+        const value = node.a[key]
+        if (value === undefined || value === null) return ''
+        return ' ' + mapAttrName(key) + '="' + String(value).replace(/"/g, '&quot;') + '"'
+      }).join('')
+      if (node.children) return '<' + node.t + attrs + '>' + node.children.map((child) => mapNodeMarkup(child)).join('') + '</' + node.t + '>'
+      if (node.c === null || node.c === undefined) return '<' + node.t + attrs + '/>'
+      const text = String(node.c).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      return '<' + node.t + attrs + '>' + text + '</' + node.t + '>'
+    }
     function mapSceneToSvg(scene, view, options) {
       const layers = mapSceneLayers(scene, view, options)
       const box = layers.view
@@ -6739,6 +6210,7 @@ window.__ModuleLoader__.load({
       const text = String(node.c).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       return '<' + node.t + attrs + '>' + text + '</' + node.t + '>'
     }
+    /* @novel-desk:map-model end */
     /* @novel-desk:map-model end */
     function mapSvgNodes(nodes, onPick) {
       return (nodes || []).map((node) => {
@@ -7125,12 +6597,6 @@ window.__ModuleLoader__.load({
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [rows])
       if (ordered.length === 0) return h(Empty, { icon: 'clock-3' }, '时间线还是空的。事件账本里新增条目后，这里会按故事时间排出时间轴。')
-      const labelOf = (p) => {
-        if (p.sortYear <= 0 && p.sortMonth <= 0) return '时间未标'
-        const year = p.sortYear > 0 ? `${p.sortYear}年` : ''
-        const month = p.sortMonth > 0 ? `${p.sortMonth}月` : ''
-        return `${year}${month}` || '时间未标'
-      }
       const groups = []
       for (const item of ordered) {
         const p = item.parts
@@ -7174,7 +6640,7 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'nd-timeline' }, nodes)
     }
 
-    // ── 页 7：账本（资料库） ─────────────────────────────────
+    // ── 账本页（资料库）：8 个页签 + 表格 + 地图 ──────────────
     const LEDGER_TABS = [
       { id: 'facts', label: withIcon('scale', ' 事实库', 13) },
       { id: 'characters', label: withIcon('user', ' 人物卡', 13) },
@@ -7576,7 +7042,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    // ── 页 7：账本 ────────────────────────────────────────────
+    // ── 账本：行主键 / 行标签 / 单元格渲染 ────────────────────
     function ledgerRowKey(row) {
       if (!row) return ''
       return String(row.id || row.name || row.title || row.subject || '')
@@ -7651,18 +7117,6 @@ window.__ModuleLoader__.load({
         error ? h(Msg, { tone: 'error' }, error) : null,
         h('div', { className: 'nd-form-grid' }, fields),
       )
-    }
-    // ── 页 8：总览 ────────────────────────────────────────────
-    function fmtScalar(value) {
-      if (value == null || value === '') return '—'
-      if (typeof value === 'number') return Number.isInteger(value) ? fmtInt(value) : String(Math.round(value * 100) / 100)
-      if (typeof value === 'boolean') return value ? '是' : '否'
-      if (typeof value === 'string') return value
-      if (Array.isArray(value)) {
-        const text = value.map((v) => (v && typeof v === 'object' ? JSON.stringify(v) : String(v))).join('、')
-        return text ? text.slice(0, 240) : '—'
-      }
-      return JSON.stringify(value).slice(0, 240)
     }
     function KeyValue({ rows, emptyText }) {
       if (!rows || rows.length === 0) return h('p', { className: 'nd-muted' }, emptyText || '暂无数据')
@@ -7919,7 +7373,7 @@ window.__ModuleLoader__.load({
         ),
       )
     }
-    // ── 页 9：设置 ────────────────────────────────────────────
+    // ── 设置页：写作参数 / 账本同步 / 预设 / 插件更新 ────────
     // 预设 = 写作约定（改预设不改正文）。这里是「绝对模板」：照着填就能自定义。
     const PRESET_TEMPLATE = `{
   // ── 身份 ─────────────────────────────────────────
@@ -8344,21 +7798,23 @@ window.__ModuleLoader__.load({
       )
     }
     // ── 样式 ──────────────────────────────────────────────────
+    // 六层样式在这里定义、在 apply() 里按另一顺序拼接。改样式先想清楚它在第几层：
+    //   定义顺序 CSS → MAP_CSS → CSS_EXTRA → PAPER_CSS → MOBILE_CSS → THEME_CSS
+    //   层叠顺序 CSS → CSS_EXTRA → PAPER_CSS → MAP_CSS → THEME_CSS → MOBILE_CSS
+    // 也就是说：主题层能盖住前面五层；移动端断点在主题层之后，能盖住主题层（只对窄屏生效）。
     const CSS = `
 .nd-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--dsw-alias-scrim,rgba(0,0,0,.45))}.nd-panel{width:100%;height:calc(100vh - 40px);max-width:1680px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:14px;background:var(--dsw-alias-bg,#fff);color:var(--dsw-alias-fg,#111827);box-shadow:0 24px 64px rgba(0,0,0,.28)}.nd-top{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg-elevated,#fafafa);flex:none}.nd-brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}.nd-brand-icon{font-size:18px}.nd-top-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-top-right{margin-left:auto;display:flex;align-items:center;gap:10px}.nd-proj{display:flex;align-items:center;gap:6px}.nd-proj-label{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-body{flex:1;display:flex;min-height:0}.nd-nav{width:176px;flex:none;display:flex;flex-direction:column;gap:2px;padding:10px 8px;border-right:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg-elevated,#fafafa);overflow-y:auto}.nd-nav-group{padding:10px 8px 4px;font-size:11px;letter-spacing:.06em;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-nav-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:inherit;font-size:13px;text-align:left;cursor:pointer}.nd-nav-item:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.05))}.nd-nav-item.nd-nav-active{background:var(--dsw-alias-brand-weak,rgba(59,130,246,.14));color:var(--dsw-alias-brand,#2563eb);font-weight:600}.nd-nav-icon{width:16px;text-align:center}.nd-nav-title{flex:1}.nd-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}.nd-page{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:16px 18px;overflow-y:auto}.nd-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.nd-page-head h2{margin:0;font-size:18px}.nd-page-actions{display:flex;align-items:center;gap:8px;flex:none}.nd-hint{margin:0;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-muted{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:8px;background:var(--dsw-alias-bg,#fff);color:inherit;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}.nd-btn:hover:not(:disabled){border-color:var(--dsw-alias-brand,#2563eb)}.nd-btn:disabled{opacity:.5;cursor:not-allowed}.nd-btn-sm{padding:3px 9px;font-size:12px}.nd-btn-primary{background:var(--dsw-alias-brand,#2563eb);border-color:var(--dsw-alias-brand,#2563eb);color:var(--dsw-alias-brand-fg,#fff)}.nd-btn-danger{color:var(--dsw-alias-error,#dc2626);border-color:var(--dsw-alias-error,#dc2626)}.nd-linkbtn{border:0;background:transparent;color:var(--dsw-alias-brand,#2563eb);font-size:12px;cursor:pointer;padding:2px 4px;border-radius:6px}.nd-linkbtn:hover{text-decoration:underline}.nd-iconbtn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}.nd-iconbtn:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.06))}.nd-input{width:100%;box-sizing:border-box;padding:6px 9px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:8px;background:var(--dsw-alias-bg,#fff);color:inherit;font:inherit;font-size:13px}.nd-input:focus{outline:2px solid var(--dsw-alias-brand-weak,rgba(59,130,246,.35));outline-offset:0;border-color:var(--dsw-alias-brand,#2563eb)}.nd-textarea{resize:vertical;line-height:1.7}.nd-field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}.nd-label{font-size:12px;font-weight:600}.nd-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.nd-form-grid .nd-field:last-child{grid-column:1/-1}.nd-form-row{display:flex;gap:10px;align-items:center}.nd-check{width:14px;height:14px;accent-color:var(--dsw-alias-brand,#2563eb);cursor:pointer}.nd-tag{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;font-size:11px;background:var(--dsw-alias-bg-elevated,#f3f4f6);color:var(--dsw-alias-fg-muted,#4b5563);white-space:nowrap}.nd-tag-brand{background:var(--dsw-alias-brand-weak,rgba(59,130,246,.14));color:var(--dsw-alias-brand,#2563eb)}.nd-tag-ok{background:rgba(22,163,74,.14);color:#15803d}.nd-tag-warn{background:rgba(217,119,6,.16);color:#b45309}.nd-tag-error{background:rgba(220,38,38,.14);color:#b91c1c}.nd-tag-muted{background:var(--dsw-alias-bg-elevated,#f3f4f6);color:var(--dsw-alias-fg-muted,#6b7280)}.nd-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dsw-alias-fg-muted,#9ca3af)}.nd-dot-brand{background:var(--dsw-alias-brand,#2563eb)}.nd-dot-ok{background:#16a34a}.nd-dot-warn{background:#d97706}.nd-dot-error{background:#dc2626}.nd-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:10px;background:var(--dsw-alias-bg-elevated,#f3f4f6);width:fit-content;flex:none}.nd-tab{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}.nd-tab.nd-tab-active{background:var(--dsw-alias-bg,#fff);color:var(--dsw-alias-brand,#2563eb);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}.nd-tab-badge{font-size:10px;padding:0 5px;border-radius:999px;background:var(--dsw-alias-brand-weak,rgba(59,130,246,.16));color:var(--dsw-alias-brand,#2563eb)}.nd-seg{display:flex;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:8px;overflow:hidden;flex:none}.nd-seg-item{padding:4px 10px;border:0;background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}.nd-seg-item+.nd-seg-item{border-left:1px solid var(--dsw-alias-border,#e5e7eb)}.nd-seg-item.nd-seg-active{background:var(--dsw-alias-brand,#2563eb);color:var(--dsw-alias-brand-fg,#fff)}.nd-msg{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;font-size:12px;flex:none}.nd-msg-info{background:var(--dsw-alias-brand-weak,rgba(59,130,246,.12));color:var(--dsw-alias-brand,#1d4ed8)}.nd-msg-ok{background:rgba(22,163,74,.12);color:#15803d}.nd-msg-error{background:rgba(220,38,38,.12);color:#b91c1c}.nd-msg-text{flex:1}.nd-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:44px 16px;border:1px dashed var(--dsw-alias-border,#e5e7eb);border-radius:12px;font-size:13px;color:var(--dsw-alias-fg-muted,#6b7280);text-align:center}.nd-loading{display:flex;align-items:center;gap:8px;padding:20px;font-size:13px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-spinner{width:14px;height:14px;border:2px solid var(--dsw-alias-border,#e5e7eb);border-top-color:var(--dsw-alias-brand,#2563eb);border-radius:50%;animation:nd-spin .8s linear infinite}@keyframes nd-spin{to{transform:rotate(360deg)}}.nd-errorbox{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:rgba(220,38,38,.1);color:#b91c1c;font-size:12px}.nd-errorbox-icon{font-size:14px}.nd-errorbox-text{flex:1}.nd-mask{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.45)}.nd-modal{width:520px;max-width:100%;max-height:82vh;display:flex;flex-direction:column;border-radius:14px;background:var(--dsw-alias-bg,#fff);color:var(--dsw-alias-fg,#111827);box-shadow:0 24px 64px rgba(0,0,0,.3)}.nd-modal-wide{width:760px}.nd-modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb)}.nd-modal-title{font-size:14px}.nd-modal-body{padding:14px 16px;overflow-y:auto}.nd-modal-foot{display:flex;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--dsw-alias-border,#e5e7eb)}.nd-modal-actions{display:flex;gap:8px}
-.nd-bar{position:relative;height:6px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#eef0f3);overflow:hidden;flex:1;min-width:40px}.nd-bar-fill{height:100%;border-radius:999px;background:var(--dsw-alias-brand,#2563eb);transition:width .2s}.nd-bar-ok{background:#16a34a}.nd-bar-warn{background:#d97706}.nd-bar-error{background:#dc2626}.nd-table-wrap{overflow:auto;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px}.nd-table{width:100%;border-collapse:collapse;font-size:12px}.nd-table th,.nd-table td{padding:7px 10px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3);text-align:left;vertical-align:top}.nd-table th{background:var(--dsw-alias-bg-elevated,#fafafa);font-weight:600;position:sticky;top:0}.nd-table tr:last-child td{border-bottom:0}.nd-cell-clip{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-row-actions{display:flex;gap:6px;flex-wrap:wrap}.nd-panel-box{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}.nd-ledger-note{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.nd-stat{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-stat-label{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-stat-value{font-size:20px}.nd-stat-hint{font-size:11px;color:var(--dsw-alias-fg-muted,#9ca3af)}.nd-two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.nd-card{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff)}.nd-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.nd-card-head h3{margin:0;font-size:14px}.nd-kv{display:flex;flex-direction:column;gap:4px;font-size:12px}.nd-kv-row{display:flex;gap:10px}.nd-kv-k{flex:none;min-width:96px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-kv-v{flex:1;word-break:break-word}.nd-todo-group{margin-top:6px;font-size:12px}.nd-todo-item{display:flex;align-items:center;gap:8px;width:100%;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}.nd-todo-item:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.05))}.nd-todo-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-route-bars{display:flex;flex-direction:column;gap:6px;margin-top:8px}.nd-route-row{display:grid;grid-template-columns:76px 1fr 26px;align-items:center;gap:8px;font-size:12px}.nd-route-label{white-space:nowrap}.nd-route-count{text-align:right;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-route-name{flex:1}.nd-route-hot{color:var(--dsw-alias-error,#dc2626);font-weight:600}.nd-curve{width:100%;height:170px}.nd-curve-grid{stroke:var(--dsw-alias-border,#e5e7eb);stroke-width:1;stroke-dasharray:3 4}.nd-curve-line{stroke:var(--dsw-alias-brand,#2563eb);stroke-width:2;stroke-linejoin:round}.nd-curve-dot{fill:var(--dsw-alias-brand,#2563eb)}.nd-weak-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}.nd-welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;height:100%;padding:40px;text-align:center}.nd-welcome-icon{font-size:40px}.nd-welcome h2{margin:0}.nd-code-hint{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-pre-note{margin:6px 0 0}.nd-read{flex:1;min-height:0;display:grid;grid-template-columns:260px minmax(0,1fr) 320px;gap:0}.nd-toc{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-toc-head{padding:10px 12px 6px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3)}.nd-toc-headline{display:flex;align-items:center;gap:8px}.nd-toc-headline .nd-hint{margin-right:auto}.nd-toc-list{flex:1;overflow-y:auto;padding:6px}.nd-toc-item{display:block;width:100%;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.nd-toc-item:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.05))}.nd-toc-item.nd-toc-active{background:var(--dsw-alias-brand-weak,rgba(59,130,246,.14))}.nd-toc-main{display:flex;align-items:center;gap:6px}.nd-toc-no{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-toc-title{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-toc-sub{display:flex;align-items:center;gap:6px;margin-top:3px}.nd-toc-right{display:flex;align-items:center;gap:6px}.nd-toc-foot{padding:8px 12px;border-top:1px solid var(--dsw-alias-border,#f0f1f3);font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-read-main{display:flex;flex-direction:column;min-width:0;min-height:0}.nd-read-head{display:flex;flex-direction:column;gap:8px;padding:10px 16px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg,#fff);position:relative;z-index:2}.nd-read-row{display:flex;align-items:center;gap:10px}.nd-read-pos{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);margin-left:auto}.nd-read-prefs{display:flex;gap:4px;align-items:center}.nd-read-prefs .nd-btn{padding:2px 7px;font-size:11px}
-.nd-reader-scroll{flex:1;min-height:0;overflow-y:auto;scroll-behavior:smooth}.nd-reader-body{max-width:720px;margin:0 auto;padding:26px 30px 80px;line-height:1.95;font-size:15px}.nd-chapter{padding-bottom:30px;margin-bottom:26px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb)}.nd-chapter:last-child{border-bottom:0}.nd-chapter-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px}.nd-ch-num{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-ch-title{margin:0 0 14px;font-size:19px;line-height:1.5}.nd-ch-title-text{}.nd-ch-title-meta{margin:0 0 14px;font-size:19px;line-height:1.5;border-bottom:1px dashed currentColor;opacity:.72}.nd-ch-words{font-size:11px;color:var(--dsw-alias-fg-muted,#9ca3af);margin-left:auto}.nd-para{margin:0 0 1.05em;text-indent:2em}.nd-hl{background:rgba(250,204,21,.45);border-radius:3px;color:inherit}.nd-plain p{margin:0 0 .9em}.nd-loading-more{padding:16px;text-align:center;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-search{display:flex;align-items:center;gap:8px;position:relative}.nd-search-input{flex:1}.nd-results{position:absolute;top:34px;left:0;right:0;z-index:5;max-height:300px;overflow-y:auto;padding:6px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff);box-shadow:0 12px 32px rgba(0,0,0,.18)}.nd-result{display:flex;gap:8px;width:100%;padding:6px 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}.nd-result:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.05))}.nd-result-ch{flex:none;color:var(--dsw-alias-brand,#2563eb)}.nd-result-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-side{display:flex;flex-direction:column;gap:0;min-height:0;overflow-y:auto;border-left:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-side-sec{padding:12px 14px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3);font-size:12px}.nd-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.nd-side-title{font-size:12px;font-weight:600}.nd-side-sub{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}.nd-side-titleline{display:flex;align-items:center;gap:6px}.nd-actions{display:flex;gap:8px;flex-wrap:wrap}.nd-att{display:flex;flex-direction:column;gap:6px}.nd-att-score{display:flex;align-items:baseline;gap:6px;font-size:12px}.nd-att-score strong{font-size:20px}.nd-att-row{display:grid;grid-template-columns:60px 1fr 48px;align-items:center;gap:8px}.nd-att-label{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-att-val{text-align:right;font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-att-empty{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-edit{display:flex;flex-direction:column;gap:8px;height:100%;padding:12px 18px;box-sizing:border-box}.nd-edit-bar{display:flex;align-items:center;gap:10px;font-size:12px}.nd-edit-title{font-size:13px}.nd-edit-state{color:var(--dsw-alias-fg-muted,#6b7280)}.nd-edit-words{color:var(--dsw-alias-fg-muted,#6b7280)}.nd-editor{flex:1;min-height:420px;width:100%;box-sizing:border-box;padding:16px 18px;overflow-wrap:break-word;word-break:normal;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff);color:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.9;resize:none}.nd-editor:focus{outline:2px solid var(--dsw-alias-brand-weak,rgba(59,130,246,.35))}
+.nd-bar{position:relative;height:6px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#eef0f3);overflow:hidden;flex:1;min-width:40px}.nd-bar-fill{height:100%;border-radius:999px;background:var(--dsw-alias-brand,#2563eb);transition:width .2s}.nd-bar-ok{background:#16a34a}.nd-bar-warn{background:#d97706}.nd-bar-error{background:#dc2626}.nd-table-wrap{overflow:auto;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px}.nd-table{width:100%;border-collapse:collapse;font-size:12px}.nd-table th,.nd-table td{padding:7px 10px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3);text-align:left;vertical-align:top}.nd-table th{background:var(--dsw-alias-bg-elevated,#fafafa);font-weight:600;position:sticky;top:0}.nd-table tr:last-child td{border-bottom:0}.nd-cell-clip{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-row-actions{display:flex;gap:6px;flex-wrap:wrap}.nd-panel-box{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}.nd-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.nd-stat{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-stat-label{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-stat-value{font-size:20px}.nd-stat-hint{font-size:11px;color:var(--dsw-alias-fg-muted,#9ca3af)}.nd-two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.nd-card{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff)}.nd-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.nd-card-head h3{margin:0;font-size:14px}.nd-kv{display:flex;flex-direction:column;gap:4px;font-size:12px}.nd-kv-row{display:flex;gap:10px}.nd-kv-k{flex:none;min-width:96px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-kv-v{flex:1;word-break:break-word}.nd-todo-group{margin-top:6px;font-size:12px}.nd-todo-item{display:flex;align-items:center;gap:8px;width:100%;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}.nd-todo-item:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.05))}.nd-todo-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-route-bars{display:flex;flex-direction:column;gap:6px;margin-top:8px}.nd-route-row{display:grid;grid-template-columns:76px 1fr 26px;align-items:center;gap:8px;font-size:12px}.nd-route-label{white-space:nowrap}.nd-route-count{text-align:right;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-curve{width:100%;height:170px}.nd-curve-grid{stroke:var(--dsw-alias-border,#e5e7eb);stroke-width:1;stroke-dasharray:3 4}.nd-curve-line{stroke:var(--dsw-alias-brand,#2563eb);stroke-width:2;stroke-linejoin:round}.nd-curve-dot{fill:var(--dsw-alias-brand,#2563eb)}.nd-weak-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}.nd-welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;height:100%;padding:40px;text-align:center}.nd-welcome-icon{font-size:40px}.nd-welcome h2{margin:0}.nd-code-hint{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-read{flex:1;min-height:0;display:grid;grid-template-columns:260px minmax(0,1fr) 320px;gap:0}.nd-toc{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-toc-head{padding:10px 12px 6px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3)}.nd-toc-headline{display:flex;align-items:center;gap:8px}.nd-toc-headline .nd-hint{margin-right:auto}.nd-toc-list{flex:1;overflow-y:auto;padding:6px}.nd-toc-item{display:block;width:100%;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.nd-toc-item:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.05))}.nd-toc-item.nd-toc-active{background:var(--dsw-alias-brand-weak,rgba(59,130,246,.14))}.nd-toc-main{display:flex;align-items:center;gap:6px}.nd-toc-no{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-toc-title{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-toc-sub{display:flex;align-items:center;gap:6px;margin-top:3px}.nd-toc-right{display:flex;align-items:center;gap:6px}.nd-toc-foot{padding:8px 12px;border-top:1px solid var(--dsw-alias-border,#f0f1f3);font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-read-main{display:flex;flex-direction:column;min-width:0;min-height:0}.nd-read-head{display:flex;flex-direction:column;gap:8px;padding:10px 16px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg,#fff);position:relative;z-index:2}.nd-read-row{display:flex;align-items:center;gap:10px}.nd-read-pos{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);margin-left:auto}.nd-read-prefs{display:flex;gap:4px;align-items:center}.nd-read-prefs .nd-btn{padding:2px 7px;font-size:11px}
+.nd-reader-scroll{flex:1;min-height:0;overflow-y:auto;scroll-behavior:smooth}.nd-reader-body{max-width:720px;margin:0 auto;padding:26px 30px 80px;line-height:1.95;font-size:15px}.nd-chapter{padding-bottom:30px;margin-bottom:26px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb)}.nd-chapter:last-child{border-bottom:0}.nd-ch-title{margin:0 0 14px;font-size:19px;line-height:1.5}.nd-ch-title-text{}.nd-ch-title-meta{margin:0 0 14px;font-size:19px;line-height:1.5;border-bottom:1px dashed currentColor;opacity:.72}.nd-para{margin:0 0 1.05em;text-indent:2em}.nd-hl{background:rgba(250,204,21,.45);border-radius:3px;color:inherit}.nd-loading-more{padding:16px;text-align:center;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-search{display:flex;align-items:center;gap:8px;position:relative}.nd-search-input{flex:1}.nd-results{position:absolute;top:34px;left:0;right:0;z-index:5;max-height:300px;overflow-y:auto;padding:6px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff);box-shadow:0 12px 32px rgba(0,0,0,.18)}.nd-result{display:flex;gap:8px;width:100%;padding:6px 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}.nd-result:hover{background:var(--dsw-alias-bg-hover,rgba(0,0,0,.05))}.nd-result-ch{flex:none;color:var(--dsw-alias-brand,#2563eb)}.nd-result-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nd-side{display:flex;flex-direction:column;gap:0;min-height:0;overflow-y:auto;border-left:1px solid var(--dsw-alias-border,#e5e7eb);background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-side-sec{padding:12px 14px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3);font-size:12px}.nd-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.nd-side-title{font-size:12px;font-weight:600}.nd-side-sub{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}.nd-side-titleline{display:flex;align-items:center;gap:6px}.nd-actions{display:flex;gap:8px;flex-wrap:wrap}.nd-att{display:flex;flex-direction:column;gap:6px}.nd-att-score{display:flex;align-items:baseline;gap:6px;font-size:12px}.nd-att-score strong{font-size:20px}.nd-att-row{display:grid;grid-template-columns:60px 1fr 48px;align-items:center;gap:8px}.nd-att-label{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-att-val{text-align:right;font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-att-empty{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-edit{display:flex;flex-direction:column;gap:8px;height:100%;padding:12px 18px;box-sizing:border-box}.nd-edit-bar{display:flex;align-items:center;gap:10px;font-size:12px}.nd-edit-title{font-size:13px}.nd-edit-words{color:var(--dsw-alias-fg-muted,#6b7280)}.nd-editor{flex:1;min-height:420px;width:100%;box-sizing:border-box;padding:16px 18px;overflow-wrap:break-word;word-break:normal;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff);color:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.9;resize:none}.nd-editor:focus{outline:2px solid var(--dsw-alias-brand-weak,rgba(59,130,246,.35))}
 .nd-editor-wrap{position:relative;flex:1;min-height:420px;display:flex;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;overflow:hidden;background:var(--dsw-alias-bg,#fff)}
 .nd-editor-wrap .nd-editor{flex:1;min-height:0;border:0;border-radius:0;background:transparent;position:relative;z-index:1}
 .nd-editor-wrap .nd-editor:focus{outline:0}
 .nd-editor-marks{position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;padding:16px 18px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;letter-spacing:normal;tab-size:8;color:transparent;pointer-events:none;overflow:hidden;z-index:0}
-.nd-edit-mark-logic{background:rgba(220,38,38,.13);border-radius:3px}
-.nd-edit-mark-deai{background:rgba(217,119,6,.15);border-radius:3px}
 .nd-edit-hl{background:rgba(250,204,21,.5);color:transparent;border-radius:2px}
 .nd-edit-markbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa);border:1px solid var(--dsw-alias-border,#e5e7eb);font-size:12px}
 .nd-edit-markchip{border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:999px;padding:2px 8px;background:var(--dsw-alias-bg,#fff);color:inherit;font:inherit;font-size:11px;cursor:pointer}
 .nd-edit-markchip-logic{border-color:rgba(220,38,38,.55);box-shadow:inset 0 0 0 1px rgba(220,38,38,.15)}
-.nd-edit-markchip-deai{border-color:rgba(217,119,6,.6);box-shadow:inset 0 0 0 1px rgba(217,119,6,.15)}.nd-banner{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;font-size:12px}.nd-banner-warn{background:rgba(217,119,6,.14);color:#92400e}.nd-note-pop{position:fixed;z-index:90;width:320px;display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff);box-shadow:0 18px 48px rgba(0,0,0,.28)}.nd-note-pop-head{font-size:12px;font-weight:600}.nd-note-quote{max-height:64px;overflow-y:auto;padding:6px 8px;border-left:3px solid var(--dsw-alias-brand,#2563eb);background:var(--dsw-alias-bg-elevated,#fafafa);font-size:11px;color:var(--dsw-alias-fg-muted,#4b5563);white-space:pre-wrap}.nd-note-actions{display:flex;justify-content:flex-end;gap:8px}.nd-notes-list{display:flex;flex-direction:column;gap:6px}.nd-note{padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg,#fff);border:1px solid var(--dsw-alias-border,#f0f1f3)}.nd-routes{display:flex;gap:10px;flex-wrap:wrap}.nd-review-list{display:flex;flex-direction:column;gap:10px}.nd-review-row{display:flex;gap:10px;padding:11px 13px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff);flex:0 0 auto}.nd-review-main{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}.nd-review-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}.nd-review-issue{font-size:13px}.nd-review-advice{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-quote{padding:6px 10px;border-left:3px solid var(--dsw-alias-border,#d1d5db);background:var(--dsw-alias-bg-elevated,#fafafa);font-size:12px;color:var(--dsw-alias-fg-muted,#4b5563);white-space:pre-wrap;max-height:120px;overflow-y:auto}.nd-review-actions{display:flex;flex-direction:column;gap:6px;flex:none;align-items:flex-end;position:sticky;top:8px}.nd-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.nd-proposals{display:flex;flex-direction:column;gap:10px}.nd-proposal{flex:0 0 auto;min-width:0}.nd-proposal{border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff);overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04)}.nd-proposal-open{border-color:var(--dsw-alias-brand,#2563eb)}.nd-proposal-head{display:flex;align-items:flex-start;gap:8px;padding:11px 14px;cursor:pointer;flex-wrap:wrap}.nd-proposal-title{flex:1 1 220px;min-width:0;font-size:13px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}.nd-proposal-summary{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);flex:1;min-width:180px}.nd-proposal-when{font-size:11px;color:var(--dsw-alias-fg-muted,#9ca3af)}.nd-proposal-arrow{color:var(--dsw-alias-fg-muted,#9ca3af)}.nd-proposal-body{display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;border-top:1px solid var(--dsw-alias-border,#f0f1f3);min-height:0}.nd-proposal-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.nd-diffs{display:flex;flex-direction:column;gap:10px;max-height:min(62vh,680px);overflow-y:auto;padding-right:6px;overscroll-behavior:contain}.nd-diff{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:10px;border-radius:10px;background:var(--dsw-alias-bg-elevated,#fafafa);flex:0 0 auto;border:1px solid var(--dsw-alias-border,#f0f1f3)}.nd-diff-col{display:flex;flex-direction:column;gap:4px;min-width:0}.nd-diff-head{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-diff-why{grid-column:1/-1;font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-pre{margin:0;padding:9px 11px;max-height:260px;overflow:auto;border-radius:6px;background:var(--dsw-alias-bg,#fff);border:1px solid var(--dsw-alias-border,#f0f1f3);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-word}.nd-gates{display:flex;flex-direction:column;gap:4px}.nd-gate-row{display:flex;align-items:center;gap:8px;font-size:12px}.nd-fixes{display:flex;flex-direction:column;gap:6px}.nd-fix{font-size:12px;padding:6px 8px;border-radius:6px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-reject{display:flex;gap:6px;align-items:center}.nd-result{padding:8px 10px;border-radius:8px;font-size:12px}.nd-result-ok{background:rgba(22,163,74,.12);color:#15803d}.nd-result-bad{background:rgba(220,38,38,.12);color:#b91c1c}.nd-run-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.nd-run-title{font-size:15px;font-weight:600}.nd-run-meta{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);display:flex;gap:10px;flex-wrap:wrap}.nd-run-actions{display:flex;gap:8px;flex-wrap:wrap}.nd-run-grid{display:grid;grid-template-columns:1fr 320px;gap:12px;align-items:start}.nd-budget{display:flex;flex-direction:column;gap:8px;font-size:12px}.nd-budget-row{display:flex;flex-direction:column;gap:4px}.nd-stages{display:flex;flex-direction:column;gap:2px}.nd-stage{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3);font-size:12px}.nd-stage:last-child{border-bottom:0}.nd-stage-dot{width:9px;height:9px;border-radius:50%;background:var(--dsw-alias-fg-muted,#d1d5db);flex:none}.nd-stage-done .nd-stage-dot{background:#16a34a}.nd-stage-running .nd-stage-dot{background:var(--dsw-alias-brand,#2563eb);box-shadow:0 0 0 3px var(--dsw-alias-brand-weak,rgba(59,130,246,.25))}.nd-stage-failed .nd-stage-dot{background:#dc2626}.nd-stage-title{flex:1}.nd-entry{display:flex;gap:10px;padding:10px 12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px}.nd-entry-icon{font-size:18px}.nd-entry-label{font-size:13px;font-weight:600}.nd-entry-meta{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-map-wrap{display:grid;grid-template-columns:1fr;gap:12px;min-height:0}.nd-map-wrap.nd-map-with-detail{grid-template-columns:minmax(0,1fr) 320px}.nd-map-canvas{position:relative;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg-elevated,#fafafa);overflow:hidden}.nd-map-svg{width:100%;height:auto;display:block}.nd-map-bg{fill:var(--dsw-alias-bg,#fff)}.nd-map-line{stroke:var(--dsw-alias-border,#cbd5e1);stroke-width:1.5;stroke-dasharray:5 5}.nd-map-point{fill:var(--dsw-alias-brand,#2563eb);stroke:#fff;stroke-width:2;cursor:pointer}.nd-map-active{fill:#f59e0b}.nd-map-label{font-size:11px;fill:var(--dsw-alias-fg,#111827);pointer-events:none}.nd-map-detail{padding:12px 14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff);display:flex;flex-direction:column;gap:8px;font-size:12px;max-height:640px;overflow-y:auto}.nd-map-detail-head{display:flex;align-items:center;gap:8px}.nd-map-note{color:var(--dsw-alias-fg-muted,#6b7280);line-height:1.7}.nd-map-event{display:flex;gap:6px;align-items:center}.nd-map-empty{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-map-group{display:flex;flex-direction:column;gap:6px}.nd-loc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}.nd-loc-card{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff);cursor:pointer;text-align:left;color:inherit;font:inherit}.nd-loc-card:hover{border-color:var(--dsw-alias-brand,#2563eb)}.nd-loc-card.nd-loc-active{border-color:var(--dsw-alias-brand,#2563eb);background:var(--dsw-alias-brand-weak,rgba(59,130,246,.1))}.nd-loc-name{font-size:13px;font-weight:600}.nd-score{font-size:11px;padding:1px 6px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#f3f4f6);color:var(--dsw-alias-fg-muted,#4b5563)}.nd-score-ok{background:rgba(22,163,74,.14);color:#15803d}.nd-score-warn{background:rgba(217,119,6,.16);color:#b45309}.nd-errorline{padding:8px 10px;border-radius:8px;background:rgba(220,38,38,.1);color:#b91c1c;font-size:12px}.nd-run-grid .nd-card{min-width:0}
+.nd-edit-markchip-deai{border-color:rgba(217,119,6,.6);box-shadow:inset 0 0 0 1px rgba(217,119,6,.15)}.nd-banner{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;font-size:12px}.nd-banner-warn{background:rgba(217,119,6,.14);color:#92400e}.nd-note-pop{position:fixed;z-index:90;width:320px;display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff);box-shadow:0 18px 48px rgba(0,0,0,.28)}.nd-note-pop-head{font-size:12px;font-weight:600}.nd-note-quote{max-height:64px;overflow-y:auto;padding:6px 8px;border-left:3px solid var(--dsw-alias-brand,#2563eb);background:var(--dsw-alias-bg-elevated,#fafafa);font-size:11px;color:var(--dsw-alias-fg-muted,#4b5563);white-space:pre-wrap}.nd-note-actions{display:flex;justify-content:flex-end;gap:8px}.nd-notes-list{display:flex;flex-direction:column;gap:6px}.nd-note{padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg,#fff);border:1px solid var(--dsw-alias-border,#f0f1f3)}.nd-review-list{display:flex;flex-direction:column;gap:10px}.nd-review-row{display:flex;gap:10px;padding:11px 13px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff);flex:0 0 auto}.nd-review-main{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}.nd-review-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}.nd-review-advice{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-quote{padding:6px 10px;border-left:3px solid var(--dsw-alias-border,#d1d5db);background:var(--dsw-alias-bg-elevated,#fafafa);font-size:12px;color:var(--dsw-alias-fg-muted,#4b5563);white-space:pre-wrap;max-height:120px;overflow-y:auto}.nd-review-actions{display:flex;flex-direction:column;gap:6px;flex:none;align-items:flex-end;position:sticky;top:8px}.nd-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.nd-proposals{display:flex;flex-direction:column;gap:10px}.nd-proposal{flex:0 0 auto;min-width:0}.nd-proposal{border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff);overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04)}.nd-proposal-open{border-color:var(--dsw-alias-brand,#2563eb)}.nd-proposal-head{display:flex;align-items:flex-start;gap:8px;padding:11px 14px;cursor:pointer;flex-wrap:wrap}.nd-proposal-title{flex:1 1 220px;min-width:0;font-size:13px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}.nd-proposal-summary{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);flex:1;min-width:180px}.nd-proposal-when{font-size:11px;color:var(--dsw-alias-fg-muted,#9ca3af)}.nd-proposal-arrow{color:var(--dsw-alias-fg-muted,#9ca3af)}.nd-proposal-body{display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;border-top:1px solid var(--dsw-alias-border,#f0f1f3);min-height:0}.nd-proposal-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.nd-diff{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:10px;border-radius:10px;background:var(--dsw-alias-bg-elevated,#fafafa);flex:0 0 auto;border:1px solid var(--dsw-alias-border,#f0f1f3)}.nd-diff-col{display:flex;flex-direction:column;gap:4px;min-width:0}.nd-diff-head{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-pre{margin:0;padding:9px 11px;max-height:260px;overflow:auto;border-radius:6px;background:var(--dsw-alias-bg,#fff);border:1px solid var(--dsw-alias-border,#f0f1f3);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-word}.nd-gates{display:flex;flex-direction:column;gap:4px}.nd-gate-row{display:flex;align-items:center;gap:8px;font-size:12px}.nd-fixes{display:flex;flex-direction:column;gap:6px}.nd-fix{font-size:12px;padding:6px 8px;border-radius:6px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-reject{display:flex;gap:6px;align-items:center}.nd-result{padding:8px 10px;border-radius:8px;font-size:12px}.nd-run-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.nd-run-title{font-size:15px;font-weight:600}.nd-run-meta{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);display:flex;gap:10px;flex-wrap:wrap}.nd-run-actions{display:flex;gap:8px;flex-wrap:wrap}.nd-run-grid{display:grid;grid-template-columns:1fr 320px;gap:12px;align-items:start}.nd-budget{display:flex;flex-direction:column;gap:8px;font-size:12px}.nd-budget-row{display:flex;flex-direction:column;gap:4px}.nd-stages{display:flex;flex-direction:column;gap:2px}.nd-stage{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--dsw-alias-border,#f0f1f3);font-size:12px}.nd-stage:last-child{border-bottom:0}.nd-stage-title{flex:1}.nd-entry{display:flex;gap:10px;padding:10px 12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px}.nd-entry-icon{font-size:18px}.nd-entry-label{font-size:13px;font-weight:600}.nd-map-wrap.nd-map-with-detail{grid-template-columns:minmax(0,1fr) 320px}.nd-map-svg{width:100%;height:auto;display:block}.nd-map-detail{padding:12px 14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff);display:flex;flex-direction:column;gap:8px;font-size:12px;max-height:640px;overflow-y:auto}.nd-map-note{color:var(--dsw-alias-fg-muted,#6b7280);line-height:1.7}.nd-map-empty{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}.nd-score{font-size:11px;padding:1px 6px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#f3f4f6);color:var(--dsw-alias-fg-muted,#4b5563)}.nd-score-ok{background:rgba(22,163,74,.14);color:#15803d}.nd-score-warn{background:rgba(217,119,6,.16);color:#b45309}.nd-errorline{padding:8px 10px;border-radius:8px;background:rgba(220,38,38,.1);color:#b91c1c;font-size:12px}.nd-run-grid .nd-card{min-width:0}
 `
     // 独立网页模式：占满整个浏览器视口（不要浮层的留白 / 圆角 / 阴影）。
     const MAP_CSS = `
@@ -8394,7 +7850,7 @@ const CSS_EXTRA = `
 .nd-proj-label{white-space:nowrap}.nd-proj .nd-select{width:auto;min-width:150px;max-width:280px}
 .nd-principle-bar{display:flex;align-items:center;gap:10px;padding:5px 16px;flex:none;border-bottom:1px solid rgba(180,83,9,.22);background:linear-gradient(90deg,rgba(251,191,36,.16),rgba(251,191,36,.05));font-size:12px;color:#92400e;white-space:nowrap;overflow:hidden}
 .nd-principle-slogan{font-weight:700;letter-spacing:.02em;color:#b45309}
-.nd-principle-text{opacity:.86;overflow:hidden;text-overflow:ellipsis}.nd-outline-list{display:flex;flex-direction:column;gap:6px}.nd-outline-row{padding:8px 10px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff)}.nd-outline-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.nd-outline-title{font-weight:600}.nd-outline-summary{margin:4px 0 0}.nd-checkline{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}.nd-selectbar{padding:8px 10px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-local-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}.nd-local-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}.nd-db-entities{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.nd-db-entity{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#f3f4f6);color:var(--dsw-alias-fg-muted,#4b5563)}.nd-unknown-list{margin-top:8px}.nd-unknown{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;padding:4px 0}.nd-role-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}.nd-role{font-size:12px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-role p{margin:2px 0 0}.nd-att-points{display:flex;flex-direction:column;gap:6px;margin-top:6px}.nd-att-point{padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-att-point-text{margin:2px 0;font-size:12px}.nd-opinions .nd-card{margin-bottom:12px}.nd-opinion{padding:10px 12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;margin-bottom:8px;background:var(--dsw-alias-bg,#fff)}.nd-opinion-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:6px}.nd-opinion-when{color:var(--dsw-alias-fg-muted,#6b7280);margin-left:auto;font-size:11px}.nd-opinion-text{margin:0 0 6px;font-size:13px;white-space:pre-wrap}.nd-opinion-after .nd-pre{max-height:160px}.nd-opinion-actions{display:flex;gap:8px;justify-content:flex-end}.nd-opinion-stale{color:#b45309}.nd-opinion-author-note{margin:4px 0;padding:6px 8px;border-radius:8px;background:rgba(37,99,235,.06);font-size:12px;color:#1d4ed8}.nd-opinion-note-edit{margin:6px 0}.nd-opinion-note-edit .nd-textarea{width:100%}.nd-storage-warn{flex:none;padding:5px 16px;font-size:12px;color:#92400e;background:rgba(217,119,6,.14);border-bottom:1px solid rgba(180,83,9,.22);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd-principle-text{opacity:.86;overflow:hidden;text-overflow:ellipsis}.nd-outline-list{display:flex;flex-direction:column;gap:6px}.nd-outline-row{padding:8px 10px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff)}.nd-outline-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.nd-outline-title{font-weight:600}.nd-outline-summary{margin:4px 0 0}.nd-checkline{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}.nd-selectbar{padding:8px 10px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-local-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}.nd-local-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}.nd-db-entities{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.nd-db-entity{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#f3f4f6);color:var(--dsw-alias-fg-muted,#4b5563)}.nd-unknown-list{margin-top:8px}.nd-unknown{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;padding:4px 0}.nd-role-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}.nd-role{font-size:12px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-role p{margin:2px 0 0}.nd-att-points{display:flex;flex-direction:column;gap:6px;margin-top:6px}.nd-att-point{padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-att-point-text{margin:2px 0;font-size:12px}.nd-opinions .nd-card{margin-bottom:12px}.nd-opinion{padding:10px 12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;margin-bottom:8px;background:var(--dsw-alias-bg,#fff)}.nd-opinion-when{color:var(--dsw-alias-fg-muted,#6b7280);margin-left:auto;font-size:11px}.nd-opinion-text{margin:0 0 6px;font-size:13px;white-space:pre-wrap}.nd-opinion-after .nd-pre{max-height:160px}.nd-opinion-stale{color:#b45309}.nd-opinion-author-note{margin:4px 0;padding:6px 8px;border-radius:8px;background:rgba(37,99,235,.06);font-size:12px;color:#1d4ed8}.nd-opinion-note-edit .nd-textarea{width:100%}.nd-storage-warn{flex:none;padding:5px 16px;font-size:12px;color:#92400e;background:rgba(217,119,6,.14);border-bottom:1px solid rgba(180,83,9,.22);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nd-hero{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 18px;border:1px solid rgba(180,83,9,.25);border-radius:14px;background:linear-gradient(120deg,rgba(251,191,36,.14),rgba(251,191,36,.03) 55%,rgba(37,99,235,.06));margin-bottom:12px}
 .nd-hero-slogan{font-size:17px;font-weight:800;letter-spacing:.03em;color:#b45309}
 .nd-hero-sub{margin:6px 0 0;font-size:12px;line-height:1.7;color:var(--dsw-alias-fg-muted,#6b7280);max-width:640px}
@@ -8403,19 +7859,10 @@ const CSS_EXTRA = `
 .nd-hero-stat span{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}
 .nd-hero-stat strong{font-size:15px}
 .nd-attention-note{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid rgba(180,83,9,.28);border-radius:10px;background:rgba(251,191,36,.1);font-size:12px;color:#92400e;flex:none}
-.nd-attention-note strong{white-space:nowrap}
-.nd-entry-wrap{display:flex;align-items:center;gap:4px}.nd-overlay.nd-standalone{padding:0;background:var(--dsw-alias-bg,#fff)}.nd-overlay.nd-standalone .nd-panel{max-width:none;height:100vh;border:0;border-radius:0;box-shadow:none}.nd-history{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto;margin-bottom:10px}
+.nd-attention-note strong{white-space:nowrap}.nd-overlay.nd-standalone{padding:0;background:var(--dsw-alias-bg,#fff)}.nd-overlay.nd-standalone .nd-panel{max-width:none;height:100vh;border:0;border-radius:0;box-shadow:none}.nd-history{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto;margin-bottom:10px}
 .nd-history-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}.nd-history-row:hover{border-color:var(--dsw-alias-brand,#2563eb)}.nd-history-active{border-color:var(--dsw-alias-brand,#2563eb);background:var(--dsw-alias-brand-weak,rgba(59,130,246,.1))}.nd-history-time{font-weight:600;min-width:64px}.nd-history-meta{color:var(--dsw-alias-fg-muted,#6b7280);flex:1}.nd-att .nd-input{max-width:120px}.nd-target{background:rgba(250,204,21,.2);box-shadow:0 0 0 6px rgba(250,204,21,.12);border-radius:6px;transition:background .5s,box-shadow .5s}
 .nd-mode-legend{font-size:11px}
 .nd-pre-tall{max-height:56vh}
-.nd-review-launchers{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
-.nd-launch-card{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff);color:inherit;font:inherit;text-align:left;cursor:pointer}.nd-launch-card:hover{border-color:var(--dsw-alias-brand,#2563eb);box-shadow:0 4px 14px rgba(37,99,235,.12)}.nd-launch-card:disabled{opacity:.55;cursor:not-allowed}.nd-launch-icon{font-size:20px}.nd-launch-main{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.nd-launch-main strong{font-size:13px}.nd-launch-go{font-size:12px;color:var(--dsw-alias-brand,#2563eb);white-space:nowrap}
-
-.nd-map-gridline{fill:none;stroke:var(--dsw-alias-border,#e5e7eb);stroke-width:1;opacity:.7}
-.nd-map-point{fill:#b91c1c;stroke:#fff;stroke-width:2;cursor:pointer}
-.nd-map-point.nd-map-active{fill:#f59e0b}
-.nd-map-label{font-size:11px;fill:var(--dsw-alias-fg,#111827);paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
-.nd-map-label.nd-map-label-active{fill:#b45309;font-weight:600}
 .nd-map-detail.nd-map-detail-empty{color:var(--dsw-alias-fg-muted,#6b7280)}
 .nd-char-groups{display:flex;flex-direction:column;gap:18px}
 .nd-char-group-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
@@ -8423,19 +7870,12 @@ const CSS_EXTRA = `
 .nd-field-row .nd-field-label{font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);white-space:nowrap}.nd-field-row .nd-input{flex:1;min-width:0}.nd-char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
 .nd-char-card{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-left-width:4px;border-radius:10px;background:var(--dsw-alias-bg,#fff);cursor:pointer;text-align:left;color:inherit;font:inherit}
 .nd-char-card:hover{border-color:var(--dsw-alias-brand,#2563eb)}
-.nd-char-protagonist{border-left-color:#2563eb;background:linear-gradient(180deg,rgba(37,99,235,.07),transparent 60%)}
-.nd-char-antagonist{border-left-color:#dc2626;background:linear-gradient(180deg,rgba(220,38,38,.07),transparent 60%)}
-.nd-char-supporting{border-left-color:#16a34a;background:linear-gradient(180deg,rgba(22,163,74,.07),transparent 60%)}
-.nd-char-minor{border-left-color:#9ca3af}
 .nd-char-face{display:flex;align-items:center;gap:8px;min-width:0}
 .nd-char-face-main{display:flex;flex-direction:column;gap:1px;min-width:0}
 .nd-char-name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nd-char-role{font-size:11px;color:var(--dsw-alias-fg-muted,#6b7280)}
 .nd-char-avatar{width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(37,99,235,.14);color:#1d4ed8;font-size:15px;font-weight:600}
 .nd-char-avatar-big{width:48px;height:48px;font-size:20px}
-.nd-char-avatar-antagonist{background:rgba(220,38,38,.14);color:#b91c1c}
-.nd-char-avatar-supporting{background:rgba(22,163,74,.14);color:#15803d}
-.nd-char-avatar-minor{background:rgba(107,114,128,.16);color:#4b5563}
 .nd-char-line-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;color:var(--dsw-alias-fg-muted,#4b5563);line-height:1.6}
 .nd-char-detail{display:flex;flex-direction:column;gap:12px}
 .nd-char-detail-head{display:flex;align-items:center;gap:10px}
@@ -8445,11 +7885,11 @@ const CSS_EXTRA = `
 .nd-tl-group:first-child{margin-top:0}
 .nd-tl-group-label{font-size:12px;font-weight:600;color:var(--dsw-alias-fg-muted,#4b5563);letter-spacing:.04em}
 .nd-tl-group::after{content:'';flex:1;height:1px;background:var(--dsw-alias-border,#f0f1f3)}
-.nd-mapview{display:flex;flex-direction:column;gap:10px}.nd-map-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.nd-map-zoom{margin-left:auto;display:flex;align-items:center;gap:6px}.nd-map-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.nd-map-layout.nd-map-with-detail{grid-template-columns:minmax(0,1fr) 300px}.nd-map-scroll{flex:1;min-height:0;height:70vh;overflow:auto;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg-elevated,#fafafa)}.nd-map-scroll .nd-map-svg{display:block;max-width:none}.nd-map-foot{display:flex;justify-content:flex-end}.nd-map-region{filter:blur(5px)}.nd-map-region-label{font-size:10px;fill:#b3aa9b;letter-spacing:.24em;opacity:.55;pointer-events:none}.nd-map-path{fill:none;stroke:#b45309;stroke-width:1.6;stroke-dasharray:7 6;opacity:.62}.nd-map-waypoint{fill:#b45309;opacity:.95}.nd-map-scroll{background:linear-gradient(180deg,#fbfaf7,#f4f1ea)}.nd-map-detail{max-height:none}.nd-mapfull{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:2vh 2vw;background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}.nd-mapfull-panel{display:flex;flex-direction:column;width:min(96vw,1500px);height:94vh;background:var(--dsw-alias-bg,#fff);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden}.nd-mapfull-head{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb)}.nd-mapfull-head .nd-actions{margin-left:auto}.nd-mapfull-canvas{position:relative;flex:1;min-height:0;overflow:hidden;background:linear-gradient(180deg,#fbfaf7,#f2eee5)}.nd-mapfull-canvas .nd-map-svg{width:100%;height:100%;display:block}.nd-mapfull-grab{position:absolute;inset:0;cursor:grab}.nd-mapfull-grab:active{cursor:grabbing}.nd-mapfull-detail{position:absolute;right:14px;top:14px;width:300px;max-height:70%;box-shadow:0 12px 40px rgba(0,0,0,.22)}.nd-mapfull-tip{position:absolute;left:14px;bottom:12px}.nd-map-preview{position:relative;display:block;width:100%;padding:0;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:linear-gradient(180deg,#fbfaf7,#f2eee5);cursor:zoom-in;overflow:hidden}.nd-map-preview .nd-map-svg{width:100%;height:auto;display:block}.nd-send-confirm{border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;padding:8px 10px;margin:6px 0;background:var(--dsw-alias-bg-elevated,#fafafa)}
+.nd-mapview{display:flex;flex-direction:column;gap:10px}.nd-map-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.nd-map-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.nd-map-layout.nd-map-with-detail{grid-template-columns:minmax(0,1fr) 300px}.nd-map-scroll .nd-map-svg{display:block;max-width:none}.nd-map-detail{max-height:none}.nd-mapfull{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:2vh 2vw;background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}.nd-mapfull-panel{display:flex;flex-direction:column;width:min(96vw,1500px);height:94vh;background:var(--dsw-alias-bg,#fff);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden}.nd-mapfull-head{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border,#e5e7eb)}.nd-mapfull-head .nd-actions{margin-left:auto}.nd-mapfull-canvas{position:relative;flex:1;min-height:0;overflow:hidden;background:linear-gradient(180deg,#fbfaf7,#f2eee5)}.nd-mapfull-canvas .nd-map-svg{width:100%;height:100%;display:block}.nd-mapfull-detail{position:absolute;right:14px;top:14px;width:300px;max-height:70%;box-shadow:0 12px 40px rgba(0,0,0,.22)}.nd-mapfull-tip{position:absolute;left:14px;bottom:12px}.nd-map-preview{position:relative;display:block;width:100%;padding:0;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:linear-gradient(180deg,#fbfaf7,#f2eee5);cursor:zoom-in;overflow:hidden}.nd-map-preview .nd-map-svg{width:100%;height:auto;display:block}.nd-send-confirm{border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;padding:8px 10px;margin:6px 0;background:var(--dsw-alias-bg-elevated,#fafafa)}
 .nd-map-preview{display:block;position:relative;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
 .nd-map-preview .nd-map-svg{display:block;width:100%;height:70vh;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg-elevated,#fafafa)}
 .nd-map-preview-hint{position:absolute;right:12px;bottom:10px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.85);color:#6b7280;font-size:11px}
-.nd-char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.nd-char-card{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff)}.nd-char-card:hover{border-color:var(--dsw-alias-brand,#2563eb)}.nd-char-head{display:flex;align-items:center;gap:10px}.nd-char-avatar{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--dsw-alias-brand-weak,rgba(59,130,246,.14));color:var(--dsw-alias-brand,#2563eb);font-size:16px;font-weight:600}.nd-char-namebox{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}.nd-char-line{display:flex;gap:8px;font-size:12px}.nd-char-arc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.nd-char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.nd-char-card{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:12px;background:var(--dsw-alias-bg,#fff)}.nd-char-card:hover{border-color:var(--dsw-alias-brand,#2563eb)}.nd-char-avatar{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--dsw-alias-brand-weak,rgba(59,130,246,.14));color:var(--dsw-alias-brand,#2563eb);font-size:16px;font-weight:600}.nd-char-line{display:flex;gap:8px;font-size:12px}
 .nd-preset-list{display:flex;flex-direction:column;gap:8px}.nd-preset{display:flex;gap:10px;padding:10px 12px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:10px;background:var(--dsw-alias-bg,#fff)}.nd-preset-active{border-color:var(--dsw-alias-brand,#2563eb);background:var(--dsw-alias-brand-weak,rgba(59,130,246,.07))}.nd-preset-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.nd-preset-title{display:flex;align-items:center;gap:8px;font-size:13px}.nd-preset-meta{display:flex;gap:6px;flex-wrap:wrap}.nd-preset-actions{display:flex;flex-direction:column;gap:6px;flex:none}.nd-curve-axis{stroke:var(--dsw-alias-border,#d1d5db);stroke-width:1}.nd-curve-axis-label{fill:var(--dsw-alias-fg-muted,#6b7280);font-size:10px}
 .nd-timeline{position:relative;display:flex;flex-direction:column;gap:2px;padding-left:6px}.nd-tl-item{display:flex;gap:12px;padding:10px 4px 10px 0}.nd-tl-dot{position:relative;flex:none;width:11px;height:11px;margin-top:5px;border-radius:50%;background:var(--dsw-alias-border,#cbd5e1);box-shadow:0 0 0 3px var(--dsw-alias-bg,#fff)}.nd-tl-item:not(:last-child) .nd-tl-dot::after{content:'';position:absolute;left:50%;top:14px;width:2px;height:calc(100% + 14px);transform:translateX(-50%);background:var(--dsw-alias-border,#e5e7eb)}.nd-tl-major .nd-tl-dot{background:#d97706}.nd-tl-climax .nd-tl-dot{background:#dc2626}.nd-tl-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.nd-tl-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}.nd-tl-title{font-weight:600;font-size:13px}.nd-tl-edit{margin-left:auto}.nd-tl-summary{margin:0;font-size:13px;line-height:1.7}
 .nd-toc-row{display:flex;align-items:stretch;gap:2px;border-radius:8px}
@@ -8512,8 +7952,6 @@ const CSS_EXTRA = `
 .nd-reader-body .nd-ch-num,.nd-reader-body .nd-ch-words,.nd-reader-body .nd-muted,.nd-reader-body .nd-loading-more{color:var(--nd-paper-muted)}
 .nd-reader-body .nd-hl{background:rgba(214,168,42,.30)}
 .nd-reader-body .nd-target{background:rgba(214,168,42,.18);box-shadow:0 0 0 6px rgba(214,168,42,.10)}
-.nd-mark-logic{background:rgba(220,38,38,.10);box-shadow:inset 3px 0 0 rgba(220,38,38,.75);border-radius:4px}
-.nd-mark-deai{background:rgba(217,119,6,.13);box-shadow:inset 3px 0 0 rgba(217,119,6,.8);border-radius:4px}
 .nd-mark-banner{position:sticky;top:0;z-index:3;justify-content:space-between}
 .nd-mark .nd-hl{background:rgba(250,204,21,.55)}
 .nd-reader-scroll .nd-empty{border-color:var(--nd-paper-line);color:var(--nd-paper-muted)}
@@ -8616,8 +8054,7 @@ const CSS_EXTRA = `
   .nd-immersive .nd-reader-body{padding:18px 16px 76px}
   .nd-immersive .nd-edit{padding:0}
   .nd-immersive .nd-editor{padding:16px 14px 70px}
-  .nd-two-col,.nd-run-grid,.nd-map-wrap,.nd-map-layout,.nd-map-layout.nd-map-with-detail,.nd-map-wrap.nd-map-with-detail{grid-template-columns:minmax(0,1fr)}
-  .nd-map-scroll{height:52vh}
+  .nd-two-col,.nd-run-grid,.nd-map-layout,.nd-map-layout.nd-map-with-detail,.nd-map-wrap.nd-map-with-detail{grid-template-columns:minmax(0,1fr)}
   .nd-map-preview .nd-map-svg{height:52vh}
   .nd-modal,.nd-modal-wide{width:calc(100vw - 20px);max-height:88dvh}
   .nd-form-grid{grid-template-columns:minmax(0,1fr)}
@@ -8753,7 +8190,7 @@ const CSS_EXTRA = `
 .nd-top-close:hover{color:var(--nd-top-text)}
 
 /* ── 三、侧栏 / 目录 / 右栏 ────────────────────────────── */
-.nd-side,.nd-toc,.nd-read-head,.nd-read-side{background:var(--nd-panel);border-color:var(--nd-line)}
+.nd-side,.nd-toc,.nd-read-head{background:var(--nd-panel);border-color:var(--nd-line)}
 .nd-nav-item{
   color:var(--nd-ink-2);
   border-radius:var(--nd-r-sm);
@@ -8941,7 +8378,6 @@ const CSS_EXTRA = `
 }
 .nd-empty-icon{color:var(--nd-line);line-height:0}
 .nd-empty-icon .nd-icon{stroke-width:1.5}
-.nd-empty-title{color:var(--nd-ink-2);font-size:12.5px;font-weight:600}
 
 /* ── 十、保存状态 pill（四态）──────────────────────────── */
 .nd-pill{
@@ -8972,7 +8408,7 @@ const CSS_EXTRA = `
   box-shadow:var(--nd-shadow-sm);
 }
 .nd-card-head h3{font-size:12.5px;font-weight:600}
-.nd-outline-row,.nd-opinion,.nd-review-row,.nd-loc-card,.nd-table-wrap,.nd-stat{border-radius:var(--nd-r-card)}
+.nd-outline-row,.nd-opinion,.nd-review-row,.nd-table-wrap,.nd-stat{border-radius:var(--nd-r-card)}
 .nd-outline-row,.nd-opinion,.nd-review-row{transition:background .15s,border-color .15s}
 .nd-outline-row:hover,.nd-opinion:hover,.nd-review-row:hover{background:var(--nd-desk-2)}
 .nd-stat{background:var(--nd-desk-2);border:1px solid var(--nd-line-2)}
@@ -9001,14 +8437,13 @@ const CSS_EXTRA = `
 
 /* ── 十二、页头 / 标题字阶 ─────────────────────────────── */
 .nd-page-head h2{font-size:17px;font-weight:600;letter-spacing:.02em}
-.nd-page-head p,.nd-page-sub{color:var(--nd-ink-3);font-size:11.5px}
-.nd-page-head h1,.nd-page-head h2,.nd-page-head h3,.nd-card-head h3,.nd-run-title,.nd-modal-title,.nd-edit-title,.nd-outline-title,.nd-loc-name,.nd-map-detail-head{
+.nd-page-head p{color:var(--nd-ink-3);font-size:11.5px}
+.nd-page-head h1,.nd-page-head h2,.nd-page-head h3,.nd-card-head h3,.nd-run-title,.nd-modal-title,.nd-edit-title,.nd-outline-title{
   font-family:var(--nd-font-serif);
   color:var(--nd-ink);
 }
 .nd-modal-title{font-size:14px;font-weight:600}
-.nd-ch-title,.nd-ch-title-text{font-family:var(--nd-font-serif);font-size:18px;letter-spacing:.02em}
-.nd-ch-words,.nd-ch-num,.nd-read-pos{font-size:10.5px;color:var(--nd-ink-4);font-variant-numeric:tabular-nums}
+.nd-ch-title,.nd-ch-title-text{font-family:var(--nd-font-serif);font-size:18px;letter-spacing:.02em}.nd-read-pos{font-size:10.5px;color:var(--nd-ink-4);font-variant-numeric:tabular-nums}
 
 /* ── 十三、正文：中文书的排法 ──────────────────────────── */
 .nd-reader-scroll{
@@ -9025,7 +8460,7 @@ const CSS_EXTRA = `
 .nd-reader-body .nd-chapter-head{border-bottom-color:var(--nd-paper-line)}
 .nd-reader-body ::selection{background:rgb(59 130 246 / 20%)}
 .nd-overlay ::selection{background:rgb(59 130 246 / 20%)}
-.nd-edit-title,.nd-edit-words,.nd-edit-state{font-variant-numeric:tabular-nums}
+.nd-edit-title,.nd-edit-words{font-variant-numeric:tabular-nums}
 .nd-edit-title{font-family:var(--nd-font-serif);letter-spacing:.02em}
 
 /* 编辑器：正文层与标记层必须同字体同内边距，否则高亮错位 */
@@ -9037,8 +8472,6 @@ const CSS_EXTRA = `
   .nd-immersive .nd-editor,.nd-immersive .nd-editor-marks{padding:16px 14px 70px}
 }
 .nd-editor{background:var(--nd-card);border-color:var(--nd-line);color:var(--nd-ink)}
-.nd-edit-mark-logic,.nd-mark-logic{box-shadow:inset 3px 0 0 rgba(168,64,44,.72)}
-.nd-edit-mark-deai,.nd-mark-deai{box-shadow:inset 3px 0 0 rgba(184,134,11,.75)}
 
 /* ── 十四、弹层 ────────────────────────────────────────── */
 .nd-mask{background:rgba(32,28,22,.34)}
@@ -9089,7 +8522,7 @@ const CSS_EXTRA = `
   border-radius:var(--nd-r-lg);
 }
 .nd-hero-slogan{color:var(--nd-warn)}
-.nd-att-*,.nd-route-hot,.nd-route-count{color:var(--nd-warn)}
+.nd-att-*,.nd-route-count{color:var(--nd-warn)}
 
 /* ── 十七、滚动条 ──────────────────────────────────────── */
 .nd-overlay ::-webkit-scrollbar{width:9px;height:9px}
