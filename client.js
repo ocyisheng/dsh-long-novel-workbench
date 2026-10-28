@@ -1307,22 +1307,16 @@ window.__ModuleLoader__.load({
 
     // ── 侧栏入口 ──────────────────────────────────────────────
     function SidebarEntry({ wide }) {
-      // 只有一个入口：在默认浏览器打开网页后台（DSH 里不再套一层浮层）。
+      // 统一行为：点击即在当前环境打开工作台浮层（Electron 内嵌、浏览器全屏、Remote 点入口）。
       const launch = () => {
-        if (IS_BROWSER_TAB) {
-          setOpen(true)
-          return
-        }
-        void openInBrowser().then((value) => {
-          if (!value) window.alert('没能拉起默认浏览器。请确认 DSH 以 Web 模式运行，或手动复制地址打开。')
-        })
+        setOpen(true)
       }
       return h(
         'button',
         {
           type: 'button',
           className: 'nd-entry',
-          title: '在默认浏览器打开小说工作台',
+          title: '打开小说工作台',
           onClick: launch,
         },
         h('span', { className: 'nd-entry-icon' }, '📖'),
@@ -1339,12 +1333,55 @@ window.__ModuleLoader__.load({
     }
     function useOpen() {
       const [open, setLocal] = useState(openState)
+      // 同值也要强制重渲染：overlay 因渲染异常被卸载后 openState 仍是 true，
+      // 再点侧栏入口若 setLocal(true) 走 React 的同值 bail，用户看到的就是「点了没反应」。
+      const [, bump] = useState(0)
       useEffect(() => {
-        const listener = (value) => setLocal(value)
+        const listener = (value) => {
+          setLocal(value)
+          bump((n) => n + 1)
+        }
         openListeners.add(listener)
         return () => openListeners.delete(listener)
       }, [])
       return open
+    }
+
+    // 页面渲染兜底：某页抛异常时只替换工作台内容，不让整个 overlay 被 React 卸载。
+    class OverlayBoundary extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = { error: null }
+      }
+      static getDerivedStateFromError(error) {
+        return { error }
+      }
+      componentDidCatch(error, info) {
+        try {
+          console.error('[novel-desk] 工作台渲染失败', error, info)
+        } catch {
+          // 忽略
+        }
+      }
+      render() {
+        const error = this.state.error
+        if (!error) return this.props.children
+        return h('div', { className: 'nd-overlay' },
+          h('div', { className: 'nd-panel' },
+            h('div', { className: 'nd-errorbox' },
+              h('span', { className: 'nd-errorbox-icon' }, '⚠'),
+              h('div', { className: 'nd-errorbox-text' },
+                h('strong', null, '页面渲染出错了'),
+                h('p', { className: 'nd-hint', style: { whiteSpace: 'pre-wrap' } }, String((error && error.message) || error)),
+                h('div', { className: 'nd-actions' },
+                  h(Btn, { small: true, kind: 'primary', onClick: () => this.setState({ error: null }) }, '重试'),
+                  h(Btn, { small: true, onClick: () => setOpen(false) }, '关闭工作台'),
+                ),
+              ),
+            ),
+          ),
+        )
+      }
     }
 
     // ── 工作台外壳 ────────────────────────────────────────────
@@ -4485,6 +4522,47 @@ window.__ModuleLoader__.load({
             : null,
           h('pre', { className: 'nd-pre nd-pre-tall' }, String(workorder.prompt || '')),
         ) : null,
+      )
+    }
+
+    // 未过闸门的提案：把 failures / gates 里的失败项拼成一句人话。
+    // 0.6.11 起提案页依赖它，但函数体在后续重构里丢了；补回来，缺了它展开提案会直接抛 ReferenceError。
+    function proposalReasons(proposal) {
+      const out = []
+      if (!proposal || typeof proposal !== 'object') return '需要修改后重新生成'
+      if (Array.isArray(proposal.failures)) out.push(...proposal.failures.map(String))
+      const gates = proposal.gates && typeof proposal.gates === 'object' ? proposal.gates : {}
+      if (gates.fidelity === 'fail') out.push('保真校验未通过（替换文本与当前正文不一致）')
+      if (gates.residue === 'fail') out.push('残留检查未通过')
+      if (gates.prose && gates.prose.normalized === false) out.push('正文规范化未通过')
+      if (gates.aistyle && gates.aistyle.pass === false) out.push(`AI 味分数 ${gates.aistyle.score}，未通过`)
+      const nested = Array.isArray(gates.failures)
+        ? gates.failures.map((row) => (row && typeof row === 'object' ? row.message || row.code || '' : String(row)))
+        : []
+      out.push(...nested.filter(Boolean))
+      if (Array.isArray(gates.results)) {
+        for (const row of gates.results) {
+          if (row && Array.isArray(row.failures)) {
+            out.push(...row.failures.map((item) => (item && typeof item === 'object' ? item.message || item.code || '' : String(item))).filter(Boolean))
+          }
+        }
+      }
+      return out.length ? out.join('；') : '需要修改后重新生成'
+    }
+
+    function GatesView({ gates }) {
+      if (!gates || typeof gates !== 'object') return null
+      const aistyle = gates.aistyle && typeof gates.aistyle === 'object' ? gates.aistyle : null
+      const prose = gates.prose && typeof gates.prose === 'object' ? gates.prose : null
+      const rows = [
+        ['正文规范化', prose ? (prose.normalized === false ? '未通过' : '通过') : '—', prose && prose.normalized !== false ? 'ok' : prose ? 'warn' : 'muted'],
+        ['保真校验', gates.fidelity === 'fail' ? '未通过' : gates.fidelity ? '通过' : '—', gates.fidelity === 'fail' ? 'warn' : gates.fidelity ? 'ok' : 'muted'],
+        ['残留检查', gates.residue === 'fail' ? '未通过' : gates.residue ? '通过' : '—', gates.residue === 'fail' ? 'warn' : gates.residue ? 'ok' : 'muted'],
+        ['AI 味', aistyle ? `${aistyle.score == null ? '—' : aistyle.score} 分${aistyle.pass === false ? '（未通过）' : aistyle.pass ? '（通过）' : ''}` : '—', aistyle && aistyle.pass === false ? 'warn' : aistyle ? 'ok' : 'muted'],
+      ]
+      return h('div', { className: 'nd-gates' },
+        h('div', { className: 'nd-side-sub' }, '闸门结果'),
+        rows.map((row) => h('div', { className: 'nd-gate-row', key: row[0] }, h('span', null, row[0]), h(Tag, { tone: row[2] }, row[1]))),
       )
     }
 
@@ -7982,14 +8060,14 @@ const CSS_EXTRA = `
         ctx.slots.inject('sidebar.footer.action', () =>
           ctx.slots.register({ name: 'sidebar.footer.action', id: 'novel-desk', order: 40, label: '小说工作台' }, SidebarEntry),
         )
-        // 浏览器标签里注册浮层；只有「显式工作台链接」才自动展开（桌面/手机一致）。
-        // DSH Remote 的手机页面没有 #novel-desk=1，保持 DSH 原样，用户点侧栏入口才打开。
-        if (IS_BROWSER_TAB) {
-          ctx.slots.inject('shell.overlay', () =>
-            ctx.slots.register({ name: 'shell.overlay', id: 'novel-desk', order: 60, label: '小说工作台' }, Workbench),
-          )
-          if (IS_STANDALONE_TAB) setOpen(true)
-        }
+        // 所有环境都注册浮层（Electron 内嵌、真浏览器全屏、Remote 点入口）。
+        // 只有「显式工作台链接」（#novel-desk=1）才自动展开；无标记时保持 DSH 原样，点侧栏入口才打开。
+        ctx.slots.inject('shell.overlay', () =>
+          ctx.slots.register({ name: 'shell.overlay', id: 'novel-desk', order: 60, label: '小说工作台' }, () =>
+            h(OverlayBoundary, null, h(Workbench)),
+          ),
+        )
+        if (IS_STANDALONE_TAB) setOpen(true)
       },
     }
   },
