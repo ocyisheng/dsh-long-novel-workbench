@@ -69,17 +69,41 @@ window.__ModuleLoader__.load({
       const payload = data && typeof data === 'object' ? data : {}
       const declared = LEDGER_FIX_KINDS.includes(String(payload.kind || '')) ? String(payload.kind) : ''
       const rows = Array.isArray(payload.ledgerFixes) ? payload.ledgerFixes : Array.isArray(payload.items) ? payload.items : []
+      // 与 lib/store.js 同口径：patch 被写成 JSON 字符串时尽量解析回对象
+      const parseObject = (text) => {
+        const source = String(text ?? '').trim()
+        if (!source.startsWith('{')) return null
+        try {
+          const parsed = JSON.parse(source)
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
+        } catch {
+          return null
+        }
+      }
       const patchOf = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : null)
+      const patchValue = (value) => {
+        if (typeof value === 'string') return parseObject(value)
+        const object = patchOf(value)
+        if (!object) return null
+        const keys = Object.keys(object)
+        const inner = object.patch ?? object.item
+        if (typeof inner === 'string' && keys.every((key) => ['id', 'kind', 'patch', 'item'].includes(key))) {
+          const parsed = parseObject(inner)
+          if (parsed) return object.id ? { id: object.id, ...parsed } : parsed
+        }
+        return object
+      }
       if (rows.length === 0) {
-        if (declared && patchOf(payload.patch)) return [{ kind: declared, patch: patchOf(payload.patch) }]
+        const single = patchValue(payload.patch)
+        if (declared && single) return [{ kind: declared, patch: single }]
         return []
       }
-      const bare = Boolean(declared) && rows.every((row) => !(patchOf(row) && (patchOf(row.patch) || patchOf(row.item))))
+      const bare = Boolean(declared) && rows.every((row) => !(patchOf(row) && (patchValue(row.patch) || patchValue(row.item))))
       return rows.map((row) => {
         const item = patchOf(row) || {}
         if (bare) return { kind: declared, patch: item }
         const kind = String(item.kind || '')
-        const patch = patchOf(item.patch) || patchOf(item.item)
+        const patch = patchValue(item.patch) || patchValue(item.item)
         if (patch) return { ...item, kind, patch }
         const rest = { ...item }
         delete rest.kind
@@ -4732,6 +4756,11 @@ window.__ModuleLoader__.load({
       const complex = []
       for (const [key, value] of Object.entries(patch)) {
         if (value === undefined || value === null || value === '') continue
+        // 长字符串（多半是被塞进来的整段 JSON）不占一行，折叠进原始数据
+        if (typeof value === 'string' && value.length > 80) {
+          complex.push({ key, label: fieldLabel(key), value })
+          continue
+        }
         const text = typeof value === 'string' ? optionText(key, value) : valueText(value)
         if (text) rows.push({ key, label: fieldLabel(key), text })
         else complex.push({ key, label: fieldLabel(key), value })
@@ -4863,24 +4892,46 @@ window.__ModuleLoader__.load({
       const kind = String((fix && fix.kind) || '')
       const name = fixName(fix)
       const { rows, complex } = fixRows(fix)
-      const raw = JSON.stringify((fix && fix.patch) || {}, null, 2)
+      const patchValue = (fix && fix.patch) || {}
+      // patch 被写成字符串（解析不回来）时说明白，别把两千字转义 JSON 摊在界面上
+      const brokenPatch = (() => {
+        if (typeof patchValue === 'string') return patchValue
+        if (!patchValue || typeof patchValue !== 'object' || Array.isArray(patchValue)) return null
+        const keys = Object.keys(patchValue)
+        const inner = patchValue.patch ?? patchValue.item
+        if (!keys.length || !keys.every((key) => ['id', 'kind', 'patch', 'item'].includes(key))) return null
+        return typeof inner === 'string' ? inner : null
+      })()
+      const hintOf = (value) => {
+        if (Array.isArray(value)) return `${value.length} 项（见原始数据）`
+        if (typeof value === 'string') return `${value.length} 字（见原始数据）`
+        return '（结构化数据）'
+      }
+      const raw = typeof patchValue === 'string' ? patchValue : JSON.stringify(patchValue, null, 2)
       return h('div', { className: 'nd-fix' },
         h('div', { className: 'nd-fix-head' },
           h(Tag, { tone: 'brand' }, FIX_KIND_LABEL[kind] || kind || '账本'),
           name ? h('span', { className: 'nd-fix-name' }, name) : null,
         ),
-        rows.length
-          ? h('div', { className: 'nd-fix-rows' }, rows.map((row) => h('div', { className: 'nd-fix-row', key: row.key },
-              h('span', { className: 'nd-fix-k' }, row.label),
-              h('span', { className: 'nd-fix-v' }, row.text),
-            )))
+        brokenPatch
+          ? h('div', { className: 'nd-fix-bad' }, '这条修订项的 patch 是 JSON 字符串，解析不出来（多半是 AI 把多条大纲拼成了一串）。请驳回后让它按 [{kind,id,patch:{…}}] 一条一项重新提交。')
           : null,
-        complex.length
-          ? h('div', { className: 'nd-fix-rows' }, complex.map((row) => h('div', { className: 'nd-fix-row', key: row.key },
-              h('span', { className: 'nd-fix-k' }, row.label),
-              h('span', { className: 'nd-fix-v nd-hint' }, Array.isArray(row.value) ? `${row.value.length} 项（见原始数据）` : '（结构化数据）'),
-            )))
-          : null,
+        brokenPatch
+          ? null
+          : rows.length
+            ? h('div', { className: 'nd-fix-rows' }, rows.map((row) => h('div', { className: 'nd-fix-row', key: row.key },
+                h('span', { className: 'nd-fix-k' }, row.label),
+                h('span', { className: 'nd-fix-v' }, row.text),
+              )))
+            : null,
+        brokenPatch
+          ? null
+          : complex.length
+            ? h('div', { className: 'nd-fix-rows' }, complex.map((row) => h('div', { className: 'nd-fix-row', key: row.key },
+                h('span', { className: 'nd-fix-k' }, row.label),
+                h('span', { className: 'nd-fix-v nd-hint' }, hintOf(row.value)),
+              )))
+            : null,
         h('details', { className: 'nd-fix-raw' },
           h('summary', null, '原始数据'),
           h('pre', { className: 'nd-pre' }, raw),
@@ -8364,6 +8415,7 @@ const CSS_EXTRA = `
 .nd-fix-k{flex:0 0 68px;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px}
 .nd-fix-v{flex:1;min-width:0;color:var(--dsw-alias-fg,#374151);overflow-wrap:anywhere;line-height:1.7}
 .nd-fix-raw summary{cursor:pointer;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px}
+.nd-fix-bad{margin:2px 0 0;padding:7px 9px;border-radius:var(--nd-r-xs);background:var(--nd-warn-weak,#f7efdc);color:var(--nd-warn-strong,#7f5b12);font-size:11px;line-height:1.7}
 .nd-gates-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .nd-gates-detail summary{cursor:pointer;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px;padding:2px 0}
 `

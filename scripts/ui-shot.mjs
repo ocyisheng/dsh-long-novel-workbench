@@ -163,6 +163,29 @@ async function main() {
   })
   made.push(ledgerFix?.id)
 
+  // 复古脏数据：patch 被写成「一整段 JSON 字符串」。现在提交会被 createProposal 拒掉，
+  // 但历史库里还可能有，界面要能兜住、别把两千字转义 JSON 摊在卡片上。
+  const proposalsPath = join(root, 'projects', projectId, 'proposals.json')
+  const rawList = JSON.parse(await readFile(proposalsPath, 'utf8'))
+  rawList.push({
+    id: 'pp_broken_patch_demo',
+    kind: 'ledger-fix',
+    chapter: 0,
+    title: '大纲第56-60章（脏数据示例）',
+    summary: 'AI 把 5 条大纲拼成一个 JSON 字符串塞进 patch。',
+    status: 'pending',
+    source: 'manual',
+    runId: null,
+    reviewIds: [],
+    data: { ledgerFixes: [{ kind: 'outlines', patch: { id: 'outline-ch56', patch: '{"chapter":56,"title":"守护·破虚学宫保卫战","beats":["观测者本体投影降临"' } }] },
+    gates: {},
+    baseHash: null,
+    createdAt: new Date().toISOString(),
+    decidedAt: null,
+  })
+  await writeFile(proposalsPath, JSON.stringify(rawList, null, 2))
+  made.push('pp_broken_patch_demo')
+
   const fixtures = {}
   const ops = [
     ['projects.list', {}], ['project.context', { projectId }], ['chapter.list', { projectId }],
@@ -192,6 +215,7 @@ async function main() {
     { name: 'proposal-bookfix', page: 'proposals', click: 0 },
     { name: 'proposal-bookfix-gates', page: 'proposals', click: 0, focus: '.nd-gates' },
     { name: 'proposal-ledger', page: 'proposals', click: 1 },
+  { name: 'proposal-brokenfix', page: 'proposals', click: 3 },
     { name: 'read', page: 'read' },
     { name: 'read-probe', page: 'read', dump: true },
     { name: 'read-edit', page: 'read', mode: 'edit' },
