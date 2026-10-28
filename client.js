@@ -4713,6 +4713,12 @@ window.__ModuleLoader__.load({
         participants: '参与人物', consequences: '后果', relationships: '关系',
         content: '正文', opinion: '修改意见', prompt: '提示词', before: '原文', after: '改为',
         kind: '类别', items: '条目',
+        // AI 随手加的字段：别把英文键直接摊给作者
+        description: '简介', desc: '简介', summary: '摘要', note: '备注', notes: '备注',
+        remark: '备注', detail: '细节', details: '细节', background: '背景',
+        appearance: '外貌', personality: '性格', motivation: '动机', secret: '秘密',
+        aliases: '别名', tags: '标签', status: '状态', title: '标题', name: '名称',
+        subject: '主体', attribute: '属性', value: '取值', text: '文本',
       })
       return map
     })()
@@ -4738,7 +4744,13 @@ window.__ModuleLoader__.load({
       if (value === null || value === undefined) return ''
       if (typeof value === 'boolean') return value ? '是' : '否'
       if (typeof value === 'number') return Number.isFinite(value) ? String(value) : ''
-      if (Array.isArray(value)) return value.every(isPlainValue) ? value.map(valueText).filter(Boolean).join('、') : ''
+      if (Array.isArray(value)) {
+        if (!value.every(isPlainValue)) return ''
+        const parts = value.map(valueText).filter(Boolean)
+        const joined = parts.join('、')
+        // 长条目（比如 beats）逐条换行，别挤成一整行
+        return joined.length > 80 ? parts.join('\n') : joined
+      }
       // 嵌套对象交给「复杂值」分支显示成「N 项（见原始数据）」，不要漏成 [object Object]
       if (typeof value === 'object') return ''
       return String(value)
@@ -4752,18 +4764,14 @@ window.__ModuleLoader__.load({
       const patch = (fix && fix.patch) || {}
       return valueText(patch.name || patch.title || patch.subject || patch.id || patch.key || '')
     }
-    // 账本修订项拆成「字段 → 值」；同样是嵌套结构的留给折叠的原始数据
+    // 账本修订项拆成「字段 → 值」；只有数组/嵌套对象留给折叠的原始数据，
+    // 文本字段（描述、beats、备注…）一律显示全文 —— 折成「N 字」作者就没法核对了。
     function fixRows(fix) {
       const patch = (fix && fix.patch) || {}
       const rows = []
       const complex = []
       for (const [key, value] of Object.entries(patch)) {
         if (value === undefined || value === null || value === '') continue
-        // 长字符串（多半是被塞进来的整段 JSON）不占一行，折叠进原始数据
-        if (typeof value === 'string' && value.length > 80) {
-          complex.push({ key, label: fieldLabel(key), value })
-          continue
-        }
         const text = typeof value === 'string' ? optionText(key, value) : valueText(value)
         if (text) rows.push({ key, label: fieldLabel(key), text })
         else complex.push({ key, label: fieldLabel(key), value })
@@ -8414,9 +8422,9 @@ const CSS_EXTRA = `
 .nd-fix-head{display:flex;align-items:center;gap:8px;font-weight:600}
 .nd-fix-name{color:var(--dsw-alias-fg,#111827)}
 .nd-fix-rows{display:flex;flex-direction:column;gap:3px}
-.nd-fix-row{display:flex;gap:8px;align-items:baseline}
-.nd-fix-k{flex:0 0 68px;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px}
-.nd-fix-v{flex:1;min-width:0;color:var(--dsw-alias-fg,#374151);overflow-wrap:anywhere;line-height:1.7}
+.nd-fix-row{display:flex;gap:8px;align-items:flex-start}
+.nd-fix-k{flex:0 0 68px;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px;line-height:1.7}
+.nd-fix-v{flex:1;min-width:0;color:var(--dsw-alias-fg,#374151);overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.7}
 .nd-fix-raw summary{cursor:pointer;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px}
 .nd-fix-bad{margin:2px 0 0;padding:7px 9px;border-radius:var(--nd-r-xs);background:var(--nd-warn-weak,#f7efdc);color:var(--nd-warn-strong,#7f5b12);font-size:11px;line-height:1.7}
 .nd-gates-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

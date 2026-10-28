@@ -156,6 +156,15 @@ async function main() {
       ledgerFixes: [
         { kind: 'characters', patch: { name: '沈砚', role: 'protagonist', age: '二十七', goal: '查清父亲旧案的真相', flaw: '只信证据，不信人', relationships: ['裴九：师兄弟', '柳氏：母子'] } },
         { kind: 'characters', patch: { name: '裴九', role: 'supporting', goal: '保住仵作行当的口碑', flaw: '遇事先护自己' } },
+        {
+          kind: 'characters',
+          patch: {
+            name: '周守拙',
+            role: 'supporting',
+            description:
+              '府衙老书吏，管了三十年的案卷，手上那本《狱簿》记着本县每一桩没结的案子。他记性好到离谱，唯独记不住自己的年岁；说话慢，走路更慢，可一旦有人翻旧案，他比谁都快。沈砚查父亲旧案时，第一个肯开口的就是他——代价是一句「查到最后，别怪我」。（示例：长描述字段现在整段显示，不再折成「N 字（见原始数据）」）',
+          },
+        },
         { kind: 'facts', patch: { subject: '沈砚', attribute: '持有物', value: '半枚铜鱼符', chapter: chapterNo, note: '父亲遗物' } },
       ],
     },
@@ -214,7 +223,8 @@ async function main() {
     { name: 'proposals-collapsed', page: 'proposals', click: -1 },
     { name: 'proposal-bookfix', page: 'proposals', click: 0 },
     { name: 'proposal-bookfix-gates', page: 'proposals', click: 0, focus: '.nd-gates' },
-    { name: 'proposal-ledger', page: 'proposals', click: 1 },
+    { name: 'proposal-ledger', page: 'proposals', click: 2 },
+  { name: 'proposal-ledger-long', page: 'proposals', click: 2, focus: '.nd-fix:nth-of-type(3)' },
   { name: 'proposal-brokenfix', page: 'proposals', click: 3 },
     { name: 'read', page: 'read' },
     { name: 'read-probe', page: 'read', dump: true },
