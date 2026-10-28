@@ -274,6 +274,7 @@ npm run check       # node --check：index.js / client.js / lib/*.js 语法检�
 | `locale/` | 中英文界面文案 |
 | `docs/releases/` | 每个版本的发布说明（GitHub Release 正文） |
 | `docs/screenshots/` | 界面截图（README 与市场共用） |
+| `docs/ci.md` | GitHub Actions 与模板说明 |
 | `.github/workflows/` | CI 与 npm 发布流程 |
 | `screenshots.json` | 市场详情页截图清单 |
 | `cordis.patch.yml` | DSH 插件装配补丁 |
