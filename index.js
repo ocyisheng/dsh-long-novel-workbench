@@ -2953,7 +2953,25 @@ const proposeTool = {
       chapter: { type: 'number', description: '章号（整书级提案可省略；book-fix 必须为 0）' },
       title: { type: 'string' },
       summary: { type: 'string' },
-      items: { type: 'array', description: 'patch-paragraph: [{before,after,why,reviewIds}]；rewrite-chapter: [{content}]；ledger-fix: [{kind,id,patch}]；book-fix: [{chapter,before,after,why,reviewIds}]', items: { type: 'object' } },
+      items: {
+        type: 'array',
+        description:
+          '修订项数组，一条一项、不要拼字符串：patch-paragraph: [{before,after,why,reviewIds}]；rewrite-chapter: [{content}]；ledger-fix: [{kind,id,patch:{…}}]（patch 必须是 JSON 对象，不是 JSON 文本）；book-fix: [{chapter,before,after,why,reviewIds}]。',
+        items: {
+          type: 'object',
+          properties: {
+            kind: { type: 'string', description: 'ledger-fix 用：world/facts/characters/events/locations/foreshadow/conflicts/outlines/highlights/presets' },
+            id: { type: 'string', description: 'ledger-fix 用：要改的那条实体 id' },
+            patch: { type: 'object', description: 'ledger-fix 用：字段更新对象（对象，不是 JSON 字符串），例如 outlines 给 {chapter,title,summary,beats,attention}' },
+            chapter: { type: 'number' },
+            before: { type: 'string' },
+            after: { type: 'string' },
+            why: { type: 'string' },
+            content: { type: 'string' },
+          },
+          additionalProperties: true,
+        },
+      },
       data: { type: 'object', description: '完整 data（与 items 二选一，data 优先）' },
     },
     required: ['kind', 'title'],

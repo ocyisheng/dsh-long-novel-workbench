@@ -14,6 +14,13 @@
   - 提交时就拦：`createProposal` 现在会检查每条修订项的 `patch`，是字符串且解析不回来就直接报「patch 必须是对象：items=[{kind,id,patch:{…}}]，请拆成一条一项」，不让脏数据进库。
   - 历史数据兜住：`ledgerFixesOf` / `proposalLedgerFixes` 遇到字符串 patch 先尝试 `JSON.parse`，`{ id, patch: "…" }` 这种套一层的包装也会解开；确实解析不了的，卡片上给一句「这条修订项的 patch 是 JSON 字符串，解析不出来」+ `原始数据` 折叠，不再把转义 JSON 摊开。
   - 长字符串字段（>80 字）不再占一整行，显示成「N 字（见原始数据）」。
+- **产生端根因（不只是显示问题）**：`ledgerFixesOf` 原先把「带了 patch 键但取不到对象」的项**静默兜底成「整条当 patch」**（`const { kind, ...rest } = item; return { kind, patch: rest }`），于是 `{kind:'outlines', id, patch:'<一大段 JSON>'}` 被改写成 `{kind:'outlines', patch:{id, patch:'<一大段 JSON>'}}` 存了下来 —— 数据是在**写入时**被改坏的，卡片只是无辜地把它照原样渲染。
+  - 归一化不再兜底：带了 `patch`/`item` 键却取不出对象时原样保留，交给校验拒掉，绝不猜着「整条当补丁」。
+  - 提交即规范：能解析的字符串 patch 在 `createProposal` 里就地换成对象、`data.items` 折成 `data.ledgerFixes`，落库形状永远是契约形状。
+  - 批准也拦：历史里的坏提案点「批准」会报「patch 不是 JSON 对象，批准只会把一堆 JSON 文本写进账本，请驳回后重新提交」，不会再往账本里灌垃圾。
+  - `novel_desk_propose` 的 `items` 参数补了 schema（`patch` 明确是 object）与说明（多条修订要拆成多个数组元素，不要拼字符串），让模型第一次就给对。
+  - 报错带定位：`badLedgerFixPatches` 改为返回 `{index, kind, reason}`，错误能指出第几项、哪种账本、坏在哪（多少字的字符串、开头是什么）。
+
 ## [0.7.7] - 2026-10-28
 
 > 字体全部改用系统默认（PingFang SC / 微软雅黑 / Segoe UI 这条栈），不再强制中文衬线。

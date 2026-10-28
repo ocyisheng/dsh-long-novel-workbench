@@ -1203,3 +1203,53 @@ test('saveChapter 正文变化：该章 attention.recheckPending=true，复测�
   assert.equal(await pendingOf(1), true, '再次改正文要重新打复测标记')
   assert.equal((await store.getAttention(root, project.id)).length, 1, '不因保存正文造出重复注意力条目')
 })
+
+test('账本修订：patch 必须是 JSON 对象（字符串能解析就规范成对象，解析不了就拒）', async (t) => {
+  const root = await tempRoot(t)
+  const project = await store.createProject(root, { title: '测试书' })
+
+  // 能解析的字符串 patch：落库时换成对象，不能留着「patch 是一段 JSON 文本」
+  const ok = await store.createProposal(root, project.id, {
+    kind: 'ledger-fix',
+    chapter: 0,
+    title: '字符串 patch 可解析',
+    data: { items: [{ kind: 'facts', patch: '{"title":"能解析"}' }] },
+  })
+  assert.equal(ok.data.ledgerFixes.length, 1)
+  assert.deepEqual(ok.data.ledgerFixes[0].patch, { title: '能解析' })
+  assert.equal(ok.data.items, undefined, 'items 归一成 ledgerFixes 后不该再留着')
+
+  // 解析不了（AI 常把多条大纲拼成一串、还带转义）：提交就拒
+  await assert.rejects(
+    () =>
+      store.createProposal(root, project.id, {
+        kind: 'ledger-fix',
+        chapter: 0,
+        title: '坏数据',
+        data: { ledgerFixes: [{ kind: 'outlines', patch: { id: 'outline-ch56', patch: '{"chapter":56,' } }] },
+      }),
+    /patch 必须是 JSON 对象/,
+  )
+
+  // 历史脏数据（直接写进文件的那种）：批准也要拦，别把 JSON 文本写进账本
+  const path = projectPath(root, project.id, 'proposals.json')
+  const rows = JSON.parse(await readFile(path, 'utf8'))
+  rows.push({
+    id: 'pp_legacy_broken',
+    kind: 'ledger-fix',
+    chapter: 0,
+    title: '历史脏数据',
+    summary: '',
+    status: 'pending',
+    source: 'agent',
+    runId: null,
+    reviewIds: [],
+    data: { ledgerFixes: [{ kind: 'outlines', patch: { id: 'outline-ch56', patch: '{"chapter":56,' } }] },
+    gates: {},
+    baseHash: null,
+    createdAt: new Date().toISOString(),
+    decidedAt: null,
+  })
+  await writeFile(path, JSON.stringify(rows, null, 2))
+  await assert.rejects(() => store.acceptProposal(root, project.id, 'pp_legacy_broken'), /不是 JSON 对象/)
+})
