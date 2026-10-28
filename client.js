@@ -4182,6 +4182,21 @@ window.__ModuleLoader__.load({
       world: '世界设定', facts: '事实', characters: '人物', events: '事件', locations: '地点',
       foreshadow: '伏笔', conflicts: '冲突', highlights: '高光', outlines: '大纲', presets: '预设',
     }
+    // 批准后会写到哪里去 —— 作者最容易在这里「对不上号」：
+    // 世界设定进 world.json（账本页没有对应表格，在地图/设置里看），
+    // 预设进 presets.json（在设置页看），其余进账本页各自的页签。
+    const FIX_KIND_HOME = {
+      world: '世界设定（设置页 / 世界地图）',
+      presets: '写作预设（设置页）',
+      facts: '账本页 · 事实库',
+      characters: '账本页 · 人物卡',
+      events: '账本页 · 时间线',
+      locations: '账本页 · 地点',
+      foreshadow: '账本页 · 伏笔',
+      conflicts: '账本页 · 冲突',
+      highlights: '账本页 · 高光',
+      outlines: '账本页 · 大纲',
+    }
     // 字段中文名：先取账本字段表（LEDGER_META 用同一套 key），再补提案里常见的几个
     const FIX_FIELD_LABEL = (() => {
       const map = {}
@@ -4406,6 +4421,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'nd-fix-head' },
           h(Tag, { tone: 'brand' }, FIX_KIND_LABEL[kind] || kind || '账本'),
           name ? h('span', { className: 'nd-fix-name' }, name) : null,
+          FIX_KIND_HOME[kind] ? h('span', { className: 'nd-fix-home' }, '写入 ' + FIX_KIND_HOME[kind]) : null,
         ),
         brokenPatch
           ? h('div', { className: 'nd-fix-bad' }, '这条修订项的 patch 是 JSON 字符串，解析不出来（多半是 AI 把多条大纲拼成了一串）。请驳回后让它按 [{kind,id,patch:{…}}] 一条一项重新提交。')
@@ -7925,7 +7941,7 @@ const CSS_EXTRA = `
 .nd-src-chip{padding:1px 7px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#f3f4f6);border:1px solid var(--dsw-alias-border,#e5e7eb);font-size:11px;color:var(--dsw-alias-fg-muted,#4b5563);cursor:help}
 .nd-fix{display:flex;flex-direction:column;gap:6px;padding:9px 11px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa);border:1px solid var(--dsw-alias-border,#f0f1f3);font-size:12px}
 .nd-fix-head{display:flex;align-items:center;gap:8px;font-weight:600}
-.nd-fix-name{color:var(--dsw-alias-fg,#111827)}
+.nd-fix-name{color:var(--dsw-alias-fg,#111827)}.nd-fix-home{margin-left:auto;font-size:10.5px;color:var(--nd-ink-4,#7d848c);white-space:nowrap}
 .nd-fix-rows{display:flex;flex-direction:column;gap:3px}
 .nd-fix-row{display:flex;gap:8px;align-items:flex-start}
 .nd-fix-k{flex:0 0 68px;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px;line-height:1.7}

@@ -1354,3 +1354,40 @@ test('提案去重：同一份工作单跑两遍、标题只差标点也只留�
   const b = await store.createProposal(root, project.id, { kind: 'ledger-fix', title: '硬事实 12 条', data: { ledgerFixes: [{ kind: 'facts', patch: { text: '沈砚是仵作' } }] } })
   assert.notEqual(a.id, b.id)
 })
+
+test('采纳账本修订：外层 id 会被写进账本条目（提案与账本对得上号）', async (t) => {
+  const root = await tempRoot(t)
+  const project = await store.createProject(root, { title: '对号测试' })
+
+  // propose 工具的标准写法就是 [{kind,id,patch}]，id 在外层
+  const proposal = await store.createProposal(root, project.id, {
+    kind: 'ledger-fix',
+    title: '两个人物',
+    data: {
+      ledgerFixes: [
+        { kind: 'characters', id: 'char-lin', patch: { name: '林默', role: '主角' } },
+        { kind: 'characters', id: 'char-shen', patch: { name: '沈砚', role: '配角' } },
+      ],
+    },
+  })
+  await store.acceptProposal(root, project.id, proposal.id)
+  const ledger = await store.getLedger(root, project.id)
+  const ids = ledger.characters.map((row) => row.id).sort()
+  assert.deepEqual(ids, ['char-lin', 'char-shen'])
+
+  // 再提交一条「按 id 改已有角色」的修订，应该更新同一行而不是新建
+  const update = await store.createProposal(root, project.id, {
+    kind: 'ledger-fix',
+    title: '补林默的目标',
+    data: { ledgerFixes: [{ kind: 'characters', id: 'char-lin', patch: { goal: '查清父亲旧案' } }] },
+  })
+  await store.acceptProposal(root, project.id, update.id)
+  const after = await store.getLedger(root, project.id)
+  assert.equal(after.characters.length, 2, '按 id 修订不应该新增一行')
+  const lin = after.characters.find((row) => row.id === 'char-lin')
+  assert.equal(lin.goal, '查清父亲旧案')
+  assert.equal(lin.name, '林默')
+
+  // 账本写入会开 SQLite，不关句柄临时目录删不掉（Windows EBUSY）
+  await bookdb.closeBook(projectPath(root, project.id))
+})
