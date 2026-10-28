@@ -5129,6 +5129,28 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const revert = async (proposal) => {
+        const label = proposal.status === 'rejected' ? '驳回' : '采纳'
+        setBusyId(proposal.id)
+        setNotice(null)
+        try {
+          const value = await api('proposal.revert', scope(projectId, { proposalId: proposal.id }))
+          const ok = !value || value.ok !== false
+          setNotice(
+            ok
+              ? { tone: 'ok', text: `已撤销${label}：${proposal.title || proposal.id}（账本 / 正文已还原，提案回到待批准）` }
+              : { tone: 'warn', text: `撤销没成功：${(value && value.message) || '未知原因'}` },
+          )
+          if (ok) setOpenId('')
+          proposals.reload()
+          if (onChanged) onChanged()
+        } catch (err) {
+          setNotice({ tone: 'error', text: `撤销失败：${friendlyError(err)}` })
+        } finally {
+          setBusyId('')
+        }
+      }
+
       const openProposal = (proposal) => {
         setOpenId((prev) => (prev === proposal.id ? '' : proposal.id))
         setRejectId('')
@@ -5224,6 +5246,8 @@ window.__ModuleLoader__.load({
                     const expanded = openId === proposal.id
                     const pending = (proposal.status || 'pending') === 'pending'
                     const editable = pending || proposal.status === 'needs-fix'
+                    const decided = proposal.status === 'accepted' || proposal.status === 'rejected'
+                    const revertLabel = proposal.status === 'rejected' ? '撤销驳回' : '撤销采纳'
                     const editing = Boolean(edit && edit.id === proposal.id)
                     // 补丁按章分组：全书提案一眼能看出「哪一章要改几处」
                     const groupMap = new Map()
@@ -5248,7 +5272,11 @@ window.__ModuleLoader__.load({
                               h(Btn, { small: true, kind: 'primary', disabled: busyId === proposal.id, onClick: () => accept(proposal) }, busyId === proposal.id ? '批准中…' : '批准'),
                               h(Btn, { small: true, disabled: busyId === proposal.id, onClick: () => { setRejectId(proposal.id); setReason('') } }, '驳回'),
                             )
-                          : null,
+                          : decided && proposal.canUndo
+                            ? h('span', { className: 'nd-proposal-actions', style: { marginLeft: 'auto' }, onClick: (e) => e.stopPropagation() },
+                                h(Btn, { small: true, disabled: busyId === proposal.id, onClick: () => revert(proposal) }, busyId === proposal.id ? '撤销中…' : revertLabel),
+                              )
+                            : null,
                       ),
                       expanded
                         ? h('div', { className: 'nd-proposal-body' },
@@ -5316,7 +5344,12 @@ window.__ModuleLoader__.load({
                                     pending ? h(Btn, { small: true, onClick: () => { setRejectId(proposal.id); setReason('') } }, '驳回') : null,
                                     chapterNo(proposal) ? h(Btn, { small: true, onClick: () => openChapter(chapterNo(proposal)) }, '看该章') : null,
                                   )
-                                : null,
+                                : decided && proposal.canUndo
+                                  ? h('div', { className: 'nd-proposal-actions' },
+                                      h(Btn, { small: true, kind: 'danger', onClick: () => revert(proposal), disabled: busyId === proposal.id }, busyId === proposal.id ? '撤销中…' : revertLabel),
+                                      h('span', { className: 'nd-hint' }, proposal.status === 'rejected' ? '撤销后回到待批准，关联审阅状态一并还原。' : '撤销会把已经写进正文 / 账本的内容还原，提案回到待批准。'),
+                                    )
+                                  : null,
                             rejectId === proposal.id
                               ? h('div', { className: 'nd-reject' },
                                   h(TextArea, { value: reason, rows: 2, placeholder: '驳回原因（必填）', onChange: setReason }),
@@ -8828,7 +8861,7 @@ const CSS_EXTRA = `
 }
 .nd-tab{border-radius:var(--nd-r-xs);font-size:12px;color:var(--nd-ink-3);transition:background .15s,color .15s}
 .nd-tab:hover:not(.nd-tab-active){background:var(--nd-card);color:var(--nd-ink)}
-.nd-tab.nd-tab-active{background:var(--nd-card);color:var(--nd-brand);font-weight:600;box-shadow:var(--nd-shadow-xs)}
+.nd-tab.nd-tab-active{background:var(--nd-card,#fff);color:var(--nd-brand,#a8402c);font-weight:600;box-shadow:var(--nd-shadow-xs,0 1px 2px rgba(64,50,38,.08))}
 .nd-tab-badge{background:var(--nd-brand-weak);color:var(--nd-brand);border-radius:var(--nd-r-pill);font-size:10.5px;font-variant-numeric:tabular-nums}
 
 /* ── 八、提醒 / 提示 ───────────────────────────────────── */

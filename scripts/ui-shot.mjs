@@ -213,6 +213,26 @@ async function main() {
     return ia - ib
   })
   fixtures['proposal.list'] = { proposals: ordered }
+
+  // 已采纳、可撤销的一条：验证「撤销采纳」出现在哪、文案对不对
+  ordered.push({
+    id: 'pp_accepted_demo',
+    kind: 'ledger-fix',
+    chapter: 0,
+    title: '事实 1 条（已采纳，可撤销）',
+    summary: '采纳后才发现补错了章节。',
+    status: 'accepted',
+    source: 'review',
+    runId: null,
+    reviewIds: [],
+    data: { ledgerFixes: [{ kind: 'facts', patch: { subject: '沈砚', attribute: '持有物', value: '半枚铜鱼符' } }] },
+    gates: { failures: [] },
+    baseHash: null,
+    createdAt: new Date(Date.now() - 7200e3).toISOString(),
+    decidedAt: new Date(Date.now() - 1800e3).toISOString(),
+    canUndo: true,
+    undoAt: new Date(Date.now() - 1800e3).toISOString(),
+  })
   fixtures.chapterGet = chapterGet
 
   await mkdir(site, { recursive: true })
@@ -226,6 +246,8 @@ async function main() {
     { name: 'proposal-ledger', page: 'proposals', click: 2 },
   { name: 'proposal-ledger-long', page: 'proposals', click: 2, focus: '.nd-fix:nth-of-type(3)' },
   { name: 'proposal-brokenfix', page: 'proposals', click: 3 },
+  { name: 'proposal-accepted', page: 'proposals', click: 0, tab: '已采纳' },
+  { name: 'proposals-probe', page: 'proposals', dump: true, tab: '已采纳', click: 0 },
     { name: 'read', page: 'read' },
     { name: 'read-probe', page: 'read', dump: true },
     { name: 'read-edit', page: 'read', mode: 'edit' },
@@ -238,7 +260,7 @@ async function main() {
   await mkdir(join(work, 'shots'), { recursive: true })
   for (const shot of shots) {
     const page = shot.page || 'proposals'
-    const hash = `#${page}?novel-desk=1&click=${shot.click ?? -1}${shot.focus ? `&focus=${encodeURIComponent(shot.focus)}` : ''}`
+    const hash = `#${page}?novel-desk=1&click=${shot.click ?? -1}${shot.tab ? `&tab=${encodeURIComponent(shot.tab)}` : ''}${shot.focus ? `&focus=${encodeURIComponent(shot.focus)}` : ''}`
     await writeFile(join(site, 'index.html'), html(fixtures, projectId, page, shot.mode || 'read'), 'utf8')
     const file = join(work, 'shots', `${shot.name}.png`)
     const args = [
@@ -293,6 +315,11 @@ window.fetch = async (url, init) => {
   const op = body.op;
   if (op === 'chapter.get') return response(FIX.chapterGet[Number(body.chapter)] || null);
   if (op === 'app.open') return response({ url: 'http://127.0.0.1:64615/', opened: true });
+  if (op === 'proposal.list') {
+    const want = body.status ? String(body.status) : '';
+    const all = (FIX['proposal.list'] && FIX['proposal.list'].proposals) || [];
+    return response({ proposals: want ? all.filter((x) => String((x && x.status) || 'pending') === want) : all });
+  }
   if (Object.prototype.hasOwnProperty.call(FIX, op)) return response(FIX[op]);
   window.__mockErrors.push('未 mock 的 op: ' + op);
   return response({});
@@ -323,25 +350,38 @@ try {
   if (!overlay) status = 'no shell.overlay';
   else { window.ReactDOM.createRoot(document.getElementById('root')).render(window.React.createElement(overlay.Component)); status = 'mounted'; }
 } catch (error) { status = 'apply failed: ' + error.message; }
+let tabDone = false;
+const tabTimer = setInterval(function () {
+  if (tabDone) return clearInterval(tabTimer);
+  const t = /tab=([^&]+)/.exec(location.hash);
+  if (!t) { clearInterval(tabTimer); return; }
+  const want = decodeURIComponent(t[1]);
+  const tabs = Array.prototype.slice.call(document.querySelectorAll('.nd-tab'));
+  const hit = tabs.find(function (el) { return el.textContent.trim().indexOf(want) === 0 });
+  if (hit && hit.className.indexOf('active') < 0) { hit.click(); tabDone = true; clearInterval(tabTimer); }
+}, 250);
 setTimeout(function () {
+  clearInterval(tabTimer);
   const m = /click=(-?\\d+)/.exec(location.hash);
   const idx = m ? Number(m[1]) : -1;
   if (idx >= 0) {
     const heads = document.querySelectorAll('.nd-proposal-head');
     if (heads[idx]) heads[idx].click();
   }
-}, 2000);
+}, 4400);
 setTimeout(function () {
   const f = /focus=([^&]+)/.exec(location.hash);
   if (!f) return;
   const el = document.querySelector(decodeURIComponent(f[1]));
   if (el) el.scrollIntoView({ block: 'center' });
-}, 3200);
+}, 5400);
 setTimeout(function () {
   const lines = ['mount: ' + status];
   if (window.__mountError) lines.push('mountError: ' + window.__mountError.split('\\n').slice(0, 4).join(' | '));
   if (window.__mockErrors.length) lines.push('errors: ' + window.__mockErrors.slice(0, 8).join(' || '));
   try {
+    const tabsEls = Array.prototype.slice.call(document.querySelectorAll('.nd-tab'));
+    if (tabsEls.length) lines.push('tabs: ' + tabsEls.map(function (el) { return el.textContent.trim() + (el.className.indexOf('active') >= 0 ? '*' : '') }).join(' | '));
     const para = document.querySelector('.nd-reader-body .nd-para');
     if (para) {
       const cs = getComputedStyle(para);

@@ -108,6 +108,7 @@ export const WRITE_OPS = [
   'proposal.update',
   'proposal.accept',
   'proposal.reject',
+  'proposal.revert',
   'proposal.batch',
   'attention.merge',
   'ledger.upsert',
@@ -2309,6 +2310,10 @@ export async function handleRpc(body, ctx = {}, options = {}) {
     case 'proposal.reject': {
       const projectId = String(need(payload, 'projectId'))
       return s.rejectProposal(root, projectId, String(need(payload, 'proposalId')), String(payload.reason ?? ''))
+    }
+    case 'proposal.revert': {
+      const projectId = String(need(payload, 'projectId'))
+      return s.revertProposal(root, projectId, String(need(payload, 'proposalId')))
     }
     case 'proposal.batch': {
       const projectId = String(need(payload, 'projectId'))

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { mkdtemp } from 'node:fs/promises'
 
 import * as store from '../lib/store.js'
+import * as bookdb from '../lib/bookdb.js'
 import { runMigration, verifyProject } from '../scripts/migrate.js'
 
 /** 每个测试独立的临时数据根（绝不写 ~/StoryDesk）。 */
@@ -1104,6 +1105,83 @@ test('rejectProposal：book-fix 被驳回后关联审阅回到 open', async (t) 
   const back = (await store.getReviews(root, project.id)).find((row) => String(row.id) === String(review.id))
   assert.equal(back.status, 'open', '驳回提案要让审阅回到待处理')
   assert.equal(back.fixedAt, null)
+})
+
+/** 撤销采纳 / 撤销驳回：把已经写进去的东西真的还原。 */
+test('撤销采纳：账本条目清掉、正文写回原样、提案退回待批准；撤销驳回恢复审阅状态', async (t) => {
+  const root = await tempRoot(t)
+  const project = await store.createProject(root, { title: '撤销书' })
+
+  // ── 账本类：采纳 2 条地点，撤销后账本回到空
+  const ledgerProposal = await store.createProposal(root, project.id, {
+    kind: 'ledger-fix',
+    chapter: 0,
+    title: '地点 2 条',
+    summary: '',
+    data: {
+      ledgerFixes: [
+        { kind: 'locations', patch: { name: '回春堂', description: '镇上的药铺' } },
+        { kind: 'locations', patch: { name: '紫微峰', description: '青云盟总坛' } },
+      ],
+    },
+  })
+  const acceptedLedger = await store.acceptProposal(root, project.id, ledgerProposal.id)
+  assert.equal(acceptedLedger.ok, true)
+  assert.equal(acceptedLedger.proposal.status, 'accepted')
+  assert.equal(acceptedLedger.proposal.canUndo, true, '采纳后要能撤销')
+  assert.equal((await store.getLedger(root, project.id)).locations.length, 2)
+
+  const revertedLedger = await store.revertProposal(root, project.id, ledgerProposal.id)
+  assert.equal(revertedLedger.ok, true)
+  assert.equal(revertedLedger.proposal.status, 'pending', '撤销后回到待批准')
+  assert.equal(revertedLedger.proposal.decidedAt, null)
+  assert.equal(revertedLedger.proposal.canUndo, false)
+  assert.equal((await store.getLedger(root, project.id)).locations.length, 0, '批准时新建的条目要被清掉')
+  const raw = JSON.parse(await readFile(projectPath(root, project.id, 'proposals.json'), 'utf8'))
+  assert.equal(raw.find((row) => row.id === ledgerProposal.id).undo, undefined, '撤销后不再保留 undo 快照')
+  await assert.rejects(() => store.revertProposal(root, project.id, ledgerProposal.id), /只有已采纳/)
+
+  // ── 正文类：采纳段落补丁，撤销后正文逐字回到原样
+  const initial = '林默推开门，屋里没有人。\n\n桌上有一封信。'
+  await store.saveChapter(root, project.id, 1, initial, { title: '第一章' })
+  const patchProposal = await store.createProposal(root, project.id, {
+    chapter: 1,
+    kind: 'patch-paragraph',
+    title: '改开头',
+    data: { patches: [{ before: '林默推开门', after: '林默一脚踹开门', why: '更有力' }] },
+  })
+  const stub = async ({ root: r, projectId, chapter, text }) => ({ ok: true, chapter: await store.saveChapter(r, projectId, chapter, text), gates: { prose: { normalized: true } } })
+  const acceptedPatch = await store.acceptProposal(root, project.id, patchProposal.id, { writeGates: stub })
+  assert.equal(acceptedPatch.ok, true)
+  assert.ok((await store.readChapter(root, project.id, 1)).text.includes('林默一脚踹开门'))
+
+  const revertedPatch = await store.revertProposal(root, project.id, patchProposal.id)
+  assert.equal(revertedPatch.proposal.status, 'pending')
+  assert.equal((await store.readChapter(root, project.id, 1)).text, initial, '正文逐字还原')
+
+  // ── 驳回类：驳回把审阅打回 open，撤销后审阅回到 proposed
+  const review = await store.addReviews(root, project.id, [{ chapter: 1, source: 'logic', quote: '桌上有一封信', issue: '太轻', severity: 'minor' }])
+  assert.equal(review.added, 1)
+  const reviewRow = (await store.getReviews(root, project.id))[0]
+  const rejectProposal = await store.createProposal(root, project.id, {
+    chapter: 1,
+    kind: 'patch-paragraph',
+    title: '再改一次',
+    reviewIds: [reviewRow.id],
+    data: { patches: [{ before: '桌上有一封信', after: '桌上放着一封未拆的信', why: '细' }] },
+  })
+  assert.equal((await store.getReviews(root, project.id)).find((row) => row.id === reviewRow.id).status, 'proposed')
+  const rejected = await store.rejectProposal(root, project.id, rejectProposal.id, '不改')
+  assert.equal(rejected.proposal.status, 'rejected')
+  assert.equal((await store.getReviews(root, project.id)).find((row) => row.id === reviewRow.id).status, 'open')
+
+  const revertedReject = await store.revertProposal(root, project.id, rejectProposal.id)
+  assert.equal(revertedReject.proposal.status, 'pending')
+  assert.equal(revertedReject.proposal.rejectReason, undefined)
+  const restoredReview = (await store.getReviews(root, project.id)).find((row) => row.id === reviewRow.id)
+  assert.equal(restoredReview.status, 'proposed', '撤销驳回答要把审阅状态还回去')
+
+  await bookdb.closeBook(projectPath(root, project.id))
 })
 
 test('addReviews：未处理时重复提交跳过；fixed/wontfix 后允许重新提交同一引文', async (t) => {
