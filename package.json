@@ -55,11 +55,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/micellince/dsh-long-novel-workbench.git"
+    "url": "git+https://github.com/ocyisheng/dsh-long-novel-workbench.git"
   },
-  "homepage": "https://github.com/micellince/dsh-long-novel-workbench#readme",
+  "homepage": "https://github.com/ocyisheng/dsh-long-novel-workbench#readme",
   "bugs": {
-    "url": "https://github.com/micellince/dsh-long-novel-workbench/issues"
+    "url": "https://github.com/ocyisheng/dsh-long-novel-workbench/issues"
   },
   "keywords": [
     "deepseek",

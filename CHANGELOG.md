@@ -463,7 +463,7 @@
 - 7 个 Agent 工具（`novel_desk_projects` / `bundle` / `context` / `plan` / `propose` / `review` / `upsert`）与 `POST /novel-desk/api`。
 - 发布基础设施：MIT License、`cordis.patch.yml`、`dsh.bundle` + `dsh.client` 清单、中英文 locale。
 
-[Unreleased]: https://github.com/micellince/dsh-long-novel-workbench/compare/v0.3.1...HEAD
-[0.4.0]: https://github.com/micellince/dsh-long-novel-workbench/compare/v0.3.1...v0.4.0
-[0.3.1]: https://github.com/micellince/dsh-long-novel-workbench/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/micellince/dsh-long-novel-workbench/releases/tag/v0.3.0
+[Unreleased]: https://github.com/ocyisheng/dsh-long-novel-workbench/compare/v0.3.1...HEAD
+[0.4.0]: https://github.com/ocyisheng/dsh-long-novel-workbench/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/ocyisheng/dsh-long-novel-workbench/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/ocyisheng/dsh-long-novel-workbench/releases/tag/v0.3.0

@@ -2,12 +2,12 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-long-novel-workbench.svg)](https://www.npmjs.com/package/dsh-long-novel-workbench)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![DeepSeek Harness plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4b6bfb)](https://github.com/micellince/dsh-long-novel-workbench)
+[![DeepSeek Harness plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4b6bfb)](https://github.com/ocyisheng/dsh-long-novel-workbench)
 [![Node](https://img.shields.io/badge/node-%5E22.19.0%20%7C%7C%20%3E%3D24.0.0-brightgreen)](package.json)
 
 一个装在 **DeepSeek Harness（DSH）** 里的长篇中文小说工作台：**打开就能看全文；AI 只负责找问题和写修改稿，稿采纳进正文才生效**。
 
-> 当前版本 **0.7.2**（2026-10-27 发布）。0.7.1 把「审阅」重做成「问题单 + 修改稿」；0.7.2 把作者自己的意见接进同一张问题单（「＋ 作者提问题」「💭 宏观提议」），并让全文动作开工前先问「本次要求」、改写 / 扩写必须两次确认。
+> 当前版本 **0.7.7**（2026-10-28）。0.7.1 把「审阅」重做成「问题单 + 修改稿」；0.7.2 把作者自己的意见接进同一张问题单（「＋ 作者提问题」「💭 宏观提议」）；0.7.5–0.7.7 按 [`UI设计规范.md`](UI设计规范.md) 重做了整套视觉：**纸墨朱砂**配色、深色顶栏、内联线条图标（界面里不再有 Emoji）、统一为系统默认字体。
 
 ## 它解决什么痛点
 
@@ -51,43 +51,49 @@ dsh plugin --profile <你的 profile> add dsh-long-novel-workbench
 - **已有作品（0.6.11 及更早）**：旧数据还在 `~/StoryDesk/projects/<id>/`，但 0.7 的数据形态变了（插件索引 + 每本书一个 DSH 工作区 + `novel.db`）。0.7 **不会自动迁移** 旧作品，用 `node scripts/migrate-book-0.7.mjs --project <作品id>` 迁移（默认 dry-run，`--apply` 写盘，旧目录保留）。
 - **开新书**：总览页或空库页点 **＋ 开新书** → 只填书名（同时作为工作区名）→ 选写作预设（或「自定义（让 AI 定）」）→ 写一段想法。工作台会创建作品、**给这本书建一个独立 DSH 工作区，并在里面新开一个对话**，把「方案 / 世界 / 地点 / 人物 / 全书大纲 / 伏笔」工作单发进去；AI 以提案提交，你批准后才进账本。
 - **导入旧稿**：设置页 **📥 导入旧稿**（顶栏「⬆ 导入」直达）可以扫描任意目录或单个 `.md` / `.txt`，不要求 `0001.md` 命名，导入会新建一部作品，**原目录不动**。
-- **打开方式**：侧栏 **📖 小说工作台** = 在系统默认浏览器打开全屏网页版后台（认证复用 DSH，关掉 DSH 网页即失效）；侧栏 **⧉** = 不跳浏览器，留在 DSH 窗口内的浮层。手机 / DSH Remote 上，普通页面仍是 DSH，只有「在默认浏览器打开」生成的专属链接会直接进入工作台，窄屏有可滚动的顶部导航和常驻关闭按钮。
+- **打开方式**：点侧栏「小说工作台」= 直接在当前 DSH 窗口里弹出工作台浮层（不跳浏览器）；浮层右上角还有「在默认浏览器打开」，需要全屏网页版后台时用它（认证复用 DSH，关掉 DSH 网页即失效）。手机 / DSH Remote 上，普通页面仍是 DSH，只有「在默认浏览器打开」生成的专属链接会直接进入工作台，窄屏有可滚动的顶部导航和常驻关闭按钮。
 
 ## 先看几张图
 
-> 截图来自演示数据：一部 24 章的合成武侠长篇《云隐剑歌》，用于展示界面，不涉及任何真实作品。
+> 截图用演示数据渲染，不涉及任何真实作品。
 
-**问题页（0.7 新界面，截图待补）** —— 「通读审」「事实与逻辑」两个入口；一张问题单，按类型 / 状态 / 范围 / 章节筛选；每条问题带修改稿，稿可以采纳、继续改或忽略，也可以勾选多条批量出稿。
+**正文页：打开就是全文** —— 左目录、中间连续阅读、右栏是本章注意力与问题统计。纸墨底色 + 深色顶栏是 0.7.5 起的默认外观。
 
-> 下面的截图来自 0.6.11：正文页、全文动作、账本、地图、沉浸与手机布局在 0.7 线没有改。
+![正文页](docs/screenshots/01-read.png)
 
-**正文页：打开就是全文** —— 左目录、中间连续阅读、右栏是本章注意力与问题统计。
+**问题页** —— 「通读审」「事实与逻辑」两个入口；一张问题单，按类型 / 状态 / 范围 / 章节筛选；每条问题带修改稿，稿可以采纳、继续改或忽略，也可以勾选多条批量出稿。
 
-![正文页](https://raw.githubusercontent.com/micellince/dsh-long-novel-workbench/main/docs/screenshots/01-read.png)
+![问题页](docs/screenshots/02-problems.png)
 
-**全文动作 run** —— 从头写 / 扩写 / 改写三种动作，阶段进度与预算一目了然。
+**修改稿** —— 提案页把「改哪里、怎么改、为什么改」摊开：字符级差异（删划线、增绿底）、按章分组、账本修订显示成「字段：值」、闸门结论排在最前面。
 
-![全文动作](https://raw.githubusercontent.com/micellince/dsh-long-novel-workbench/main/docs/screenshots/04-run.png)
+![修改稿](docs/screenshots/03-proposals.png)
 
-**总览** —— 置顶原则条与平均注意力 / 最低三章 / 未测章数，下面是注意力曲线与待办。
+**总览** —— 置顶注意力原则条与平均注意力 / 最低三章 / 未测章数，下面是注意力曲线与待办。
 
-![总览](https://raw.githubusercontent.com/micellince/dsh-long-novel-workbench/main/docs/screenshots/05-overview.png)
+![总览](docs/screenshots/05-overview.png)
 
-**账本 · 世界地图** —— 按地点坐标直绘：分区、水线山形、驿道路线与地名避让。
+**账本** —— 事实、人物、时间线、地点、世界地图、高光、冲突、伏笔、大纲九类收在同一页，按页签切换。
 
-![世界地图](https://raw.githubusercontent.com/micellince/dsh-long-novel-workbench/main/docs/screenshots/06-ledger-map.png)
+![账本](docs/screenshots/04-ledger.png)
 
-**账本 · 人物卡** —— 按主角 / 反派 / 配角分组，几十号人物一眼能扫。
+**设置** —— 作品级写作参数（只约束 AI 动作的上限）、七角色分工与各自的输出上限。
 
-![人物卡](https://raw.githubusercontent.com/micellince/dsh-long-novel-workbench/main/docs/screenshots/07-ledger-characters.png)
+![设置](docs/screenshots/06-settings.png)
 
-**沉浸模式** —— 收掉顶栏、导航与侧栏，正文接近全屏，只留阅读 / 编辑 / 批注三颗按钮和字号。
+## 界面与视觉
 
-![沉浸模式](https://raw.githubusercontent.com/micellince/dsh-long-novel-workbench/main/docs/screenshots/08-immersive.png)
+整套外观按仓库里的 [`UI设计规范.md`](UI设计规范.md) 实现，只有一层主题（`client.js` 里的 `THEME_CSS`），**布局结构与操作流程不参与**，换肤只改这一层。
 
-**手机阅读** —— 窄屏布局、长按选字加批注、字号照样可调。
+- **配色：纸墨朱砂** —— 底色 `#f4f1ea`、面板 `#fbfaf6`、卡片纯白、正文纸 `#f6f2e9`；正文墨 `#23262b`；主强调**朱砂 `#a8402c`**，只用于「当前选中 / 主按钮 / 语义强调」，次级按钮与标签一律走中性暖灰。顶栏是深色的 `#20242b`。
+- **语义色** —— success `#2e7d32`、warning `#b8860b`、destructive `#b23a48`、info `#58708a`，各自带一层淡底。
+- **层级** —— 圆角分五档（输入 5 / 按钮 7 / 卡片表格 8 / 浮层 13 / 胶囊 999），阴影七档、统一暖棕相 `rgb(64 50 38 / x%)`。
+- **图标** —— 内联 SVG（取自 lucide），stroke 1.8、圆头端点、颜色随文字；**界面里没有 Emoji**，也不引外部图标库。
+- **字体** —— 系统默认（macOS 苹方 / Windows 微软雅黑 / Segoe UI），不打包 Web 字体。
+- **正文排版** —— 行高 2、两端对齐、首行缩进 2em，字号与行距可在阅读页调（13–28px），编辑模式的高亮镜像层与正文层强制同字体同内边距，标记不会飘。
+- **响应式** —— `1024px` 断点收窄侧栏与工具条，`hover:none` 设备把按钮热区放大到 36px。
 
-![手机阅读](https://raw.githubusercontent.com/micellince/dsh-long-novel-workbench/main/docs/screenshots/09-mobile-read.png)
+想核对某个色值或字号的落地结果，可以跑 `node scripts/ui-shot.mjs`：它会把工作台渲染成静态 HTML、用无头 Chrome 逐页截图，并用 `--dump-dom` 探针把 `getComputedStyle` 的实际值打出来。
 
 ## 核心循环：读 → 批注 → 找问题 → 采纳 / 继续改 / 忽略
 
@@ -226,7 +232,7 @@ AI 产出的修改稿不会背着你改正文：只有你点采纳才会写入�
 
 - **数据形态变了**：0.6.11 的作品在 `~/StoryDesk/projects/<id>/`；0.7 起插件索引在 `~/.dsh/data/dsh-long-novel-workbench/`，每本书的数据放在它自己的 DSH 工作区，正文 / 账本 / 问题都在同一目录 + `novel.db`。**0.7 不会自动迁移 0.6 作品。**
 - **迁移**：`node scripts/migrate-book-0.7.mjs --project <作品id>` 先 dry-run；确认后加 `--apply` 写盘；旧作品目录原样保留。迁移后旧意见 / 提案记录保留在数据里，但**不再进入新的问题单**（旧意见数据不迁移）。
-- **同一包升级**：在 DSH 插件管理里把 `dsh-long-novel-workbench` 升到 0.7.2（或 `dsh plugin --profile <你的 profile> add dsh-long-novel-workbench@0.7.2`），重载插件 + 刷新页面。升级前建议先备份 `~/StoryDesk` 与作品工作区（含 `novel.db*`）。
+- **同一包升级**：在 DSH 插件管理里把 `dsh-long-novel-workbench` 升到 0.7.7（或 `dsh plugin --profile <你的 profile> add dsh-long-novel-workbench@0.7.7`），重载插件 + 刷新页面。升级前建议先备份 `~/StoryDesk` 与作品工作区（含 `novel.db*`）。
 - **旧格式仍可读**：0.5.x 的 `chapters/NNNN.md`（带 frontmatter）继续可读、原地写回，未知 frontmatter 字段原样保留；`.txt + meta.json` 与旧审阅 / 账本数据都能读。
 
 ## 开发、测试与发布
@@ -234,23 +240,23 @@ AI 产出的修改稿不会背着你改正文：只有你点采纳才会写入�
 需要 **Node `^22.19.0 || >=24.0.0`**（`package.json` 的 `engines`）。仓库没有第三方依赖，也没有构建步骤。
 
 ```sh
-git clone https://github.com/micellince/dsh-long-novel-workbench.git
+git clone https://github.com/ocyisheng/dsh-long-novel-workbench.git
 cd dsh-long-novel-workbench
 
 npm run check       # node --check：index.js / client.js / lib/*.js 语法检查
 ```
 
-> **0.7.2 的测试状态**：按项目当前规则，本版**没有运行自动化测试**，发布验收以作者手测为准；`test/` 目录仍是 0.6 行为断言，尚未随 0.7 的问题单模型更新。`e2e` / `smoke` 脚本依赖真实作品数据与无头 Chrome，不随发布运行。
+> **测试状态（0.7.7）**：`node --test test/client.test.js` 为 **pass 14 / fail 9**。失败的 9 条是 0.6 时期写死的行为断言（体积上限、41 个 op 的契约清单、ChapterPicker、界面不生成提案等），在 0.7 重构时就已失效，与当前改动无关；新增的改动都配了对应的静态断言（主题层接线、图标注入、提案页读法）。`e2e` / `smoke` 脚本依赖真实作品数据与无头 Chrome，不随发布运行。
 
 ### 发布方式
 
 发布只走「**推 tag → GitHub Actions → npm**」：
 
 1. 作者在本地提交、推 `main`；
-2. 作者打 `v0.7.2` tag 并推送——`.github/workflows/publish.yml` 会先校验 tag 与 `package.json` 版本一致，再用仓库密钥 `NPM_TOKEN` 执行 `npm publish --access public`；
-3. 发布后在 npm 上校验 `version` / `dist-tags`，GitHub Release 用 [docs/releases/v0.7.2.md](docs/releases/v0.7.2.md) 做正文并挂上打包好的 `.tgz`。
+2. 作者打 tag（如 `v0.7.7`）并推送——`.github/workflows/publish.yml` 会先校验 tag 与 `package.json` 版本一致，再用仓库密钥 `NPM_TOKEN` 执行 `npm publish --access public`；
+3. 发布后在 npm 上校验 `version` / `dist-tags`，GitHub Release 用 `CHANGELOG.md` 里对应版本的段落做正文，并挂上打包好的 `.tgz`。
 
-每个版本的发布说明在 [docs/releases/](docs/releases/)（本版：[v0.7.2](docs/releases/v0.7.2.md)）。发布与打 tag 一律由作者本人发起，Agent 不推送、不打 tag、不发布。
+历史版本的发布说明在 [docs/releases/](docs/releases/)，当前版本看 [CHANGELOG.md](CHANGELOG.md)。发布与打 tag 一律由作者本人发起，Agent 不推送、不打 tag、不发布。
 
 - 改 Host 代码（`index.js`、`lib/*.js`）后需要重载插件；改 `client.js` 后刷新页面即可。
 
@@ -261,7 +267,7 @@ npm run check       # node --check：index.js / client.js / lib/*.js 语法检�
 | `index.js` | 宿主入口：注册 HTTP 路由与 Agent 工具 |
 | `client.js` | 浏览器端：整个工作台界面 |
 | `lib/` | 宿主模块：存储、写入闸门、账本、导出、提示词 |
-| `scripts/` | 命令行脚本：迁移、体检、界面冒烟 |
+| `scripts/` | 命令行脚本：迁移、体检、界面冒烟、截图（`ui-shot.mjs`） |
 | `test/` | 单元测试（0.6 行为断言，未随 0.7 更新） |
 | `locale/` | 中英文界面文案 |
 | `docs/releases/` | 每个版本的发布说明（GitHub Release 正文） |
@@ -270,10 +276,11 @@ npm run check       # node --check：index.js / client.js / lib/*.js 语法检�
 | `screenshots.json` | 市场详情页截图清单 |
 | `cordis.patch.yml` | DSH 插件装配补丁 |
 | `CHANGELOG.md` | 版本变更记录 |
+| `UI设计规范.md` | 设计规范：色板、字阶、间距、组件与图标约定 |
 
 ## 问题与反馈
 
-用着不顺手、缺功能、发现 bug，欢迎开 [Issue](https://github.com/micellince/dsh-long-novel-workbench/issues)；预设、检查规则都是数据驱动的，PR 也很好加。如果这个工作台帮你少踩一个坑，点个 ⭐ 就是最大的鼓励。
+用着不顺手、缺功能、发现 bug，欢迎开 [Issue](https://github.com/ocyisheng/dsh-long-novel-workbench/issues)；预设、检查规则都是数据驱动的，PR 也很好加。如果这个工作台帮你少踩一个坑，点个 ⭐ 就是最大的鼓励。
 
 ## License
 
@@ -291,4 +298,4 @@ npm run check       # node --check：index.js / client.js / lib/*.js 语法检�
 - Every problem carries scope (chapter / cross-chapter / global), severity, location and a **draft** (paragraph or whole-chapter). Accept a draft to replace the text, ask for a revision, or ignore a false positive; batch selected problems in one go.
 - Proposals are no longer part of review/rewrite: the review chain produces problems and drafts only. Proposals remain for ledger fixes and full-text actions.
 - How to find problems: author annotations + two AI lanes; how to fix: accept / request revision / ignore. Editor, attention scoring, ledger, database, full-text generation/rewrite, export, map and presets are unchanged.
-- Version 0.7.2, released 2026-10-27. Install from DSH *Settings → Plugins* with the package name `dsh-long-novel-workbench`.
+- Version 0.7.7 (2026-10-28). Install from DSH *Settings → Plugins* with the package name `dsh-long-novel-workbench`.
