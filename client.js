@@ -4530,23 +4530,22 @@ window.__ModuleLoader__.load({
     function proposalReasons(proposal) {
       const out = []
       if (!proposal || typeof proposal !== 'object') return '需要修改后重新生成'
-      if (Array.isArray(proposal.failures)) out.push(...proposal.failures.map(String))
+      const failText = (item) => (item && typeof item === 'object' ? item.message || item.reason || item.code || '' : String(item ?? ''))
+      if (Array.isArray(proposal.failures)) out.push(...proposal.failures.map(failText).filter(Boolean))
       const gates = proposal.gates && typeof proposal.gates === 'object' ? proposal.gates : {}
       if (gates.fidelity === 'fail') out.push('保真校验未通过（替换文本与当前正文不一致）')
       if (gates.residue === 'fail') out.push('残留检查未通过')
       if (gates.prose && gates.prose.normalized === false) out.push('正文规范化未通过')
       if (gates.aistyle && gates.aistyle.pass === false) out.push(`AI 味分数 ${gates.aistyle.score}，未通过`)
-      const nested = Array.isArray(gates.failures)
-        ? gates.failures.map((row) => (row && typeof row === 'object' ? row.message || row.code || '' : String(row)))
-        : []
+      const nested = Array.isArray(gates.failures) ? gates.failures.map(failText) : []
       out.push(...nested.filter(Boolean))
       if (Array.isArray(gates.results)) {
         for (const row of gates.results) {
-          if (row && Array.isArray(row.failures)) {
-            out.push(...row.failures.map((item) => (item && typeof item === 'object' ? item.message || item.code || '' : String(item))).filter(Boolean))
-          }
+          if (row && Array.isArray(row.failures)) out.push(...row.failures.map(failText).filter(Boolean))
         }
       }
+      // 闸门有结果但没抓到具体失败项时，别退回「需要修改后重新生成」这种答非所问的说法。
+      if (!out.length && Object.keys(gates).length) return '未通过闸门校验，建议重新生成'
       return out.length ? out.join('；') : '需要修改后重新生成'
     }
 
