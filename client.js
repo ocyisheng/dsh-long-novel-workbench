@@ -1700,7 +1700,7 @@ window.__ModuleLoader__.load({
         else if (page === 'ledger') pageNode = h(LedgerTab, { ...common, key: `ledger:${projectId}` })
         else if (page === 'overview') pageNode = h(OverviewTab, { ...common, key: `overview:${projectId}` })
         else pageNode = h(SettingsTab, { ...common, key: `settings:${projectId}` })
-        body = h(Fragment, null, h('div', { className: 'nd-body' }, h(Nav, { page, go }), h('main', { className: 'nd-main' }, pageNode)))
+        body = h(Fragment, null, h('div', { className: 'nd-body' }, h(Nav, { page, go, onNewBook: openNewBook }), h('main', { className: 'nd-main' }, pageNode)))
       }
 
       return h('div', { className: `nd-overlay${IS_BROWSER_TAB ? ' nd-standalone' : ''}${immersiveNow ? ' nd-immersive' : ''}` },
@@ -1745,7 +1745,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function Nav({ page, go }) {
+    function Nav({ page, go, onNewBook }) {
       const groups = []
       for (const item of PAGES) {
         let group = groups.find((g) => g.name === item.group)
@@ -1774,6 +1774,21 @@ window.__ModuleLoader__.load({
             ),
           ),
         ),
+        // 常驻新建入口：原来只有「没有作品」的空态页和总览页右上角能开新书，
+        // 进到正文 / 提案这些页面之后就找不到入口了。
+        onNewBook
+          ? h('div', { className: 'nd-nav-foot', key: '__new-book' },
+              h('button', {
+                type: 'button',
+                className: 'nd-nav-new',
+                onClick: onNewBook,
+                title: '新建作品：选预设、写一段想法，AI 把世界/人物/大纲做成提案交给你批准',
+              },
+                h('span', { className: 'nd-nav-icon' }, h(Icon, { name: 'book-plus', size: 14 })),
+                h('span', null, '新建作品'),
+              ),
+            )
+          : null,
       )
     }
 
@@ -8567,6 +8582,9 @@ const CSS_EXTRA = `
   .nd-nav-group{display:contents}
   .nd-nav-group > .nd-nav-title{display:none}
   .nd-nav-item{width:auto;flex:none;white-space:nowrap;padding:6px 9px;font-size:12px}
+  .nd-nav-foot{margin-top:0;padding:0 0 0 6px;border-top:0;border-left:1px solid var(--dsw-alias-border,#e5e7eb)}
+  .nd-nav-new{width:auto;white-space:nowrap;padding:6px 9px;font-size:12px;border-style:solid}
+  .nd-nav-new span:last-child{margin:0}
   .nd-main{width:100%}
   .nd-page{padding:10px 12px;gap:10px}
   .nd-page-head{flex-wrap:wrap;gap:8px}
@@ -8750,6 +8768,16 @@ const CSS_EXTRA = `
   box-shadow:inset 3px 0 0 var(--nd-brand),var(--nd-shadow-xs);
 }
 .nd-nav-group{color:var(--nd-ink-4);font-size:10.5px;letter-spacing:.10em}
+.nd-nav-foot{margin-top:auto;padding:10px 2px 2px;border-top:1px solid var(--nd-line)}
+.nd-nav-new{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:7px 10px;border:1px dashed var(--nd-brand);border-radius:var(--nd-r-sm);
+  background:var(--nd-brand-weak);color:var(--nd-brand);
+  font:inherit;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.nd-nav-new:hover{background:var(--nd-brand);border-color:var(--nd-brand);color:#fff}
+.nd-nav-new .nd-nav-icon .nd-icon{stroke-width:1.9}
 .nd-toc-item{border-radius:var(--nd-r-xs);transition:background .15s}
 .nd-toc-item:hover{background:var(--nd-desk-2)}
 .nd-toc-row.nd-toc-active-row{background:var(--nd-card);box-shadow:var(--nd-shadow-xs);border-radius:var(--nd-r)}

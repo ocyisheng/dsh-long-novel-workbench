@@ -397,3 +397,12 @@ test('防重复提交：投递有在飞锁、开新书有重入锁、宿主有�
   // 幂等只认「完全相同的 prompt」：指纹里必须带长度和两个 hash 分量
   assert.match(indexSource, /function textFingerprint\(text\)/)
 })
+
+test('侧栏有常驻的「新建作品」入口，且接的是开新书流程', () => {
+  assert.match(source, /function Nav\(\{ page, go, onNewBook \}\)/)
+  assert.match(source, /h\(Nav, \{ page, go, onNewBook: openNewBook \}\)/)
+  assert.match(source, /className: 'nd-nav-new'/)
+  assert.match(source, /'新建作品'/)
+  // 空态页的入口保留，别为了常驻入口把原来的删了
+  assert.match(source, /onClick: \(\) => setNewBookOpen\(true\) \}, '＋ 开新书'/)
+})

@@ -249,6 +249,7 @@ async function main() {
   { name: 'proposal-accepted', page: 'proposals', click: 0, tab: '已采纳' },
   { name: 'proposals-probe', page: 'proposals', dump: true, tab: '已采纳', click: 0 },
     { name: 'read', page: 'read' },
+  { name: 'read-mobile', page: 'read', size: '430,880' },
     { name: 'read-probe', page: 'read', dump: true },
     { name: 'read-edit', page: 'read', mode: 'edit' },
     { name: 'problems', page: 'problems' },
