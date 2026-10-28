@@ -25,14 +25,14 @@ window.__ModuleLoader__.load({
     }
 
     const PAGES = [
-      { id: 'read', label: '正文', icon: '📖', group: '正文' },
-      { id: 'outlines', label: '大纲', icon: '🧭', group: '正文' },
-      { id: 'problems', label: '问题', icon: '🔍', group: '正文' },
-      { id: 'proposals', label: '提案', icon: '📋', group: '正文' },
-      { id: 'run', label: '全文动作', icon: '🛠️', group: '正文' },
-      { id: 'ledger', label: '账本', icon: '🗂️', group: '资料' },
-      { id: 'overview', label: '总览', icon: '📊', group: '系统' },
-      { id: 'settings', label: '设置', icon: '⚙️', group: '系统' },
+      { id: 'read', label: '正文', icon: 'book-open', group: '正文' },
+      { id: 'outlines', label: '大纲', icon: 'compass', group: '正文' },
+      { id: 'problems', label: '问题', icon: 'search', group: '正文' },
+      { id: 'proposals', label: '提案', icon: 'clipboard-list', group: '正文' },
+      { id: 'run', label: '全文动作', icon: 'wrench', group: '正文' },
+      { id: 'ledger', label: '账本', icon: 'archive', group: '资料' },
+      { id: 'overview', label: '总览', icon: 'chart-column', group: '系统' },
+      { id: 'settings', label: '设置', icon: 'settings', group: '系统' },
     ]
     const PAGE_LABEL = Object.fromEntries(PAGES.map((p) => [p.id, p.label]))
 
@@ -43,10 +43,10 @@ window.__ModuleLoader__.load({
     ]
 
     const ROUTES = [
-      { id: 'logic', label: '逻辑', icon: '🧩' },
-      { id: 'attention', label: '注意力', icon: '⚡' },
-      { id: 'ai-style', label: 'AI 味', icon: '🤖' },
-      { id: 'reader', label: '读者', icon: '👀' },
+      { id: 'logic', label: '逻辑', icon: 'puzzle' },
+      { id: 'attention', label: '注意力', icon: 'zap' },
+      { id: 'ai-style', label: 'AI 味', icon: 'bot' },
+      { id: 'reader', label: '读者', icon: 'eye' },
     ]
     const ROUTE_LABEL = Object.fromEntries(ROUTES.map((r) => [r.id, r.label]))
 
@@ -137,7 +137,7 @@ window.__ModuleLoader__.load({
     const LEDGER_KINDS = ['facts', 'characters', 'events', 'foreshadow', 'conflicts', 'locations', 'highlights', 'outlines']
     const LEDGER_META = {
       facts: {
-        title: '事实', icon: '⚖️',
+        title: '事实', icon: 'scale',
         cols: [
           { k: 'subject', t: '主体' }, { k: 'attribute', t: '属性' },
           { k: 'value', t: '取值' }, { k: 'chapter', t: '章', w: '60px' },
@@ -153,7 +153,7 @@ window.__ModuleLoader__.load({
         ],
       },
       characters: {
-        title: '人物', icon: '👤',
+        title: '人物', icon: 'user',
         cols: [{ k: 'name', t: '姓名' }, { k: 'role', t: '定位', w: '90px' }, { k: 'goal', t: '目标' }, { k: 'flaw', t: '缺陷' }],
         fields: [
           { k: 'name', t: '姓名', type: 'text', required: true },
@@ -170,7 +170,7 @@ window.__ModuleLoader__.load({
         ],
       },
       events: {
-        title: '事件', icon: '🕰️',
+        title: '事件', icon: 'clock',
         cols: [{ k: 'chapter', t: '章', w: '60px' }, { k: 'storyTime', t: '故事时间' }, { k: 'title', t: '事件' }, { k: 'location', t: '地点' }],
         fields: [
           { k: 'title', t: '事件', type: 'text', required: true },
@@ -184,7 +184,7 @@ window.__ModuleLoader__.load({
         ],
       },
       foreshadow: {
-        title: '伏笔', icon: '🧩',
+        title: '伏笔', icon: 'puzzle',
         cols: [{ k: 'title', t: '伏笔' }, { k: 'setupChapter', t: '埋设', w: '70px' }, { k: 'payoffChapter', t: '回收', w: '70px' }, { k: 'status', t: '状态', w: '90px' }],
         fields: [
           { k: 'title', t: '伏笔', type: 'text', required: true },
@@ -196,7 +196,7 @@ window.__ModuleLoader__.load({
         ],
       },
       conflicts: {
-        title: '冲突', icon: '⚔️',
+        title: '冲突', icon: 'swords',
         cols: [{ k: 'title', t: '冲突' }, { k: 'type', t: '类型', w: '90px' }, { k: 'status', t: '状态', w: '90px' }, { k: 'stakes', t: '赌注' }],
         fields: [
           { k: 'title', t: '冲突', type: 'text', required: true },
@@ -210,7 +210,7 @@ window.__ModuleLoader__.load({
         ],
       },
       locations: {
-        title: '地点', icon: '🏙️',
+        title: '地点', icon: 'building-2',
         cols: [
           { k: 'name', t: '地点' },
           { k: 'type', t: '类型', w: '90px', options: LOCATION_TYPES },
@@ -230,7 +230,7 @@ window.__ModuleLoader__.load({
         ],
       },
       highlights: {
-        title: '高光', icon: '✨',
+        title: '高光', icon: 'sparkles',
         cols: [
           { k: 'chapter', t: '章', w: '60px' }, { k: 'type', t: '类型', w: '90px' },
           { k: 'title', t: '高光' }, { k: 'text', t: '原文' },
@@ -245,7 +245,7 @@ window.__ModuleLoader__.load({
         ],
       },
       outlines: {
-        title: '大纲', icon: '🧭',
+        title: '大纲', icon: 'compass',
         cols: [
           { k: 'chapter', t: '章', w: '60px' }, { k: 'title', t: '标题' },
           { k: 'summary', t: '梗概' }, { k: 'status', t: '状态', w: '90px' },
@@ -259,6 +259,102 @@ window.__ModuleLoader__.load({
         ],
       },
     }
+
+    // ── 图标（内联 SVG，不依赖任何外部库）────────────────────
+    // 收 ui 规范：线条图标、stroke 1.8、圆头端点；不用 emoji。
+    // 图标：lucide（ISC）内联路径，stroke 1.8 / 圆头端点，随 currentColor 继承
+    const ICON_SVG = {
+  'archive': '<rect width="20" height="5" x="2" y="3" rx="1" /><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" /><path d="M10 12h4" />',
+  'arrow-down': '<path d="M12 5v14" /><path d="m19 12-7 7-7-7" />',
+  'arrow-up': '<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />',
+  'book-open': '<path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />',
+  'book-plus': '<path d="M12 7v6" /><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /><path d="M9 10h6" />',
+  'bookmark': '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />',
+  'bot': '<path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" />',
+  'building-2': '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /><path d="M10 6h4" /><path d="M10 10h4" /><path d="M10 14h4" /><path d="M10 18h4" />',
+  'chart-column': '<path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />',
+  'chart-no-axes-column': '<line x1="18" x2="18" y1="20" y2="10" /><line x1="12" x2="12" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="14" />',
+  'check': '<path d="M20 6 9 17l-5-5" />',
+  'chevron-down': '<path d="m6 9 6 6 6-6" />',
+  'chevron-right': '<path d="m9 18 6-6-6-6" />',
+  'clipboard-list': '<rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" />',
+  'clock-3': '<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16.5 12" />',
+  'clock': '<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />',
+  'compass': '<path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" /><circle cx="12" cy="12" r="10" />',
+  'credit-card': '<rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" />',
+  'database': '<ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5V19A9 3 0 0 0 21 19V5" /><path d="M3 12A9 3 0 0 0 21 12" />',
+  'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />',
+  'eye': '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" />',
+  'file-check': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="m9 15 2 2 4-4" />',
+  'file-search': '<path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M4.268 21a2 2 0 0 0 1.727 1H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3" /><path d="m9 18-1.5-1.5" /><circle cx="5" cy="14" r="3" />',
+  'file-text': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" />',
+  'flask-conical': '<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" />',
+  'folder': '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />',
+  'git-compare': '<circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M13 6h3a2 2 0 0 1 2 2v7" /><path d="M11 18H8a2 2 0 0 1-2-2V9" />',
+  'globe': '<circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" />',
+  'hammer': '<path d="m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9" /><path d="m18 15 4-4" /><path d="m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172V7l-2.26-2.26a6 6 0 0 0-4.202-1.756L9 2.96l.92.82A6.18 6.18 0 0 1 12 8.4V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5" />',
+  'handshake': '<path d="m11 17 2 2a1 1 0 1 0 3-3" /><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" /><path d="m21 3 1 11h-2" /><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" /><path d="M3 4h8" />',
+  'keyboard': '<path d="M10 8h.01" /><path d="M12 12h.01" /><path d="M14 8h.01" /><path d="M16 12h.01" /><path d="M18 8h.01" /><path d="M6 8h.01" /><path d="M7 16h10" /><path d="M8 12h.01" /><rect width="20" height="16" x="2" y="4" rx="2" />',
+  'layers': '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />',
+  'library': '<path d="m16 6 4 14" /><path d="M12 6v14" /><path d="M8 8v12" /><path d="M4 4v16" />',
+  'lightbulb': '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" />',
+  'map-pin': '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" />',
+  'map': '<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /><path d="M15 5.764v15" /><path d="M9 3.236v15" />',
+  'maximize': '<path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" />',
+  'message-circle': '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />',
+  'minus': '<path d="M5 12h14" />',
+  'palette': '<circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />',
+  'pen-line': '<path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" />',
+  'pen-tool': '<path d="M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z" /><path d="m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18" /><path d="m2.3 2.3 7.286 7.286" /><circle cx="11" cy="11" r="2" />',
+  'plus': '<path d="M5 12h14" /><path d="M12 5v14" />',
+  'puzzle': '<path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z" />',
+  'receipt': '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 17.5v-11" />',
+  'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" />',
+  'scale': '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /><path d="M7 21h10" /><path d="M12 3v18" /><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />',
+  'scan-search': '<path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3" /><path d="m16 16-1.9-1.9" />',
+  'search': '<circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />',
+  'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />',
+  'snowflake': '<line x1="2" x2="22" y1="12" y2="12" /><line x1="12" x2="12" y1="2" y2="22" /><path d="m20 16-4-4 4-4" /><path d="m4 8 4 4-4 4" /><path d="m16 4-4 4-4-4" /><path d="m8 20 4-4 4 4" />',
+  'sparkles': '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /><path d="M20 3v4" /><path d="M22 5h-4" /><path d="M4 17v2" /><path d="M5 18H3" />',
+  'sticky-note': '<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" /><path d="M15 3v4a2 2 0 0 0 2 2h4" />',
+  'swords': '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" /><line x1="13" x2="19" y1="19" y2="13" /><line x1="16" x2="20" y1="16" y2="20" /><line x1="19" x2="21" y1="21" y2="19" /><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" /><line x1="5" x2="9" y1="14" y2="18" /><line x1="7" x2="4" y1="17" y2="20" /><line x1="3" x2="5" y1="19" y2="21" />',
+  'trending-up': '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />',
+  'triangle-alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />',
+  'upload': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" />',
+  'user': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />',
+  'users-round': '<path d="M18 21a8 8 0 0 0-16 0" /><circle cx="10" cy="8" r="5" /><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3" />',
+  'wallet': '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />',
+  'wrench': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />',
+  'x': '<path d="M18 6 6 18" /><path d="m6 6 12 12" />',
+  'zap': '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />',
+    }
+
+    function Icon({ name, size = 14, className, title }) {
+      const body = ICON_SVG[name]
+      if (!body) return null
+      return h('svg', {
+        className: className ? `nd-icon ${className}` : 'nd-icon',
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.8,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': title ? undefined : 'true',
+        role: title ? 'img' : undefined,
+        focusable: 'false',
+        dangerouslySetInnerHTML: { __html: title ? `<title>${title}</title>${body}` : body },
+      })
+    }
+
+    // 图标 + 文字：按钮、标签、卡片头里统一用这个（间距交给 CSS）
+    function withIcon(name, children, size = 13) {
+      const text = typeof children === 'string' ? children.replace(/^\s+/, '') : children
+      return h('span', { className: 'nd-with-icon' }, h(Icon, { name, size }), text)
+    }
+
 
     // ── 小工具 ────────────────────────────────────────────────
     function lsGet(key, fallback = '') {
@@ -844,7 +940,7 @@ window.__ModuleLoader__.load({
         }
       }
       return h('section', { className: 'nd-card' },
-        h('div', { className: 'nd-card-head' }, h('h3', null, '📝 标题进正文')),
+        h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('pen-line', ' 标题进正文', 14))),
         h('p', { className: 'nd-hint' }, '0.7 起正文 .txt 首行就是回目标题（可直接发人、可被选中批注）。旧章标题还在 meta.json 里，先预演再应用；逐章自动备份。'),
         state.result ? h('p', { className: 'nd-hint' }, state.result.apply ? `已迁移 ${state.result.done} 章。` : `计划迁移 ${state.result.planned} 章（dry-run，未写盘）。${state.result.items && state.result.items.length ? '例如：' + state.result.items.slice(0, 3).map((row) => `第${row.chapter}章「${row.title}」`).join('、') : ''}`) : null,
         state.error ? h(Msg, { tone: 'error' }, state.error) : null,
@@ -888,7 +984,7 @@ window.__ModuleLoader__.load({
       const data = state.data || {}
       const result = data.installResult || data.rollbackResult
       return h('section', { className: 'nd-card' },
-        h('div', { className: 'nd-card-head' }, h('h3', null, '🔄 插件更新')),
+        h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('refresh-cw', ' 插件更新', 14))),
         h('p', { className: 'nd-hint' }, `已装版本：${data.current || '—'}${data.latest ? ` ｜ npm 最新：${data.latest}` : ''}${data.mode ? ` ｜ 安装形态：${data.mode === 'git' ? 'git 源码副本' : 'npm 包副本'}` : ''}`),
         data.error ? h(Msg, { tone: 'error' }, `检查失败：${data.error}`) : null,
         data.latest && data.outdated ? h(Msg, { tone: 'warn' }, '有新版本可用。') : null,
@@ -921,7 +1017,7 @@ window.__ModuleLoader__.load({
     }
     function ErrorBox({ error, onRetry }) {
       return h('div', { className: 'nd-errorbox' },
-        h('span', { className: 'nd-errorbox-icon' }, '⚠'),
+        h('span', { className: 'nd-errorbox-icon' }, h(Icon, { name: 'triangle-alert', size: 14 })),
         h('span', { className: 'nd-errorbox-text' }, error || '请求失败'),
         onRetry ? h(Btn, { small: true, onClick: onRetry }, '重试') : null,
       )
@@ -930,7 +1026,7 @@ window.__ModuleLoader__.load({
       if (!children) return null
       return h('div', { className: `nd-msg nd-msg-${tone || 'info'}` },
         h('span', { className: 'nd-msg-text' }, children),
-        onClose ? h(IconBtn, { onClick: onClose, title: '关闭' }, '✕') : null,
+        onClose ? h(IconBtn, { onClick: onClose, title: '关闭' }, h(Icon, { name: 'x', size: 14 })) : null,
       )
     }
     function Modal({ title, children, onClose, footer, wide }) {
@@ -938,7 +1034,7 @@ window.__ModuleLoader__.load({
         h('div', { className: `nd-modal${wide ? ' nd-modal-wide' : ''}` },
           h('div', { className: 'nd-modal-head' },
             h('strong', { className: 'nd-modal-title' }, title),
-            h(IconBtn, { onClick: onClose, title: '关闭' }, '✕'),
+            h(IconBtn, { onClick: onClose, title: '关闭' }, h(Icon, { name: 'x', size: 14 })),
           ),
           h('div', { className: 'nd-modal-body' }, children),
           footer ? h('div', { className: 'nd-modal-foot' }, footer) : null,
@@ -970,7 +1066,7 @@ window.__ModuleLoader__.load({
       }
       const title = (project && (project.title || project.name)) || '未命名作品'
       return h(Modal, {
-        title: '📤 导出正文',
+        title: withIcon('upload', ' 导出正文', 14),
         onClose,
         footer: h('div', { className: 'nd-modal-actions' },
           h(Btn, { onClick: onClose }, '关闭'),
@@ -1239,7 +1335,7 @@ window.__ModuleLoader__.load({
               : h(Btn, { kind: 'primary', onClick: submit, disabled: busy || !canNext }, busy ? '创建中…' : '创建并生成'),
           )
 
-      return h(Modal, { title: '🆕 开新书', onClose: busy ? () => {} : onClose, footer, wide: true },
+      return h(Modal, { title: withIcon('book-plus', ' 开新书', 15), onClose: busy ? () => {} : onClose, footer, wide: true },
         h('div', { className: 'nd-form-row', style: { gap: 6, marginBottom: 10 } },
           ['书名', '选预设', '说想法', '确认', '完成'].map((label, index) => h(Tag, { key: label, tone: step >= index + 1 ? 'brand' : 'muted' }, `${index + 1}. ${label}`)),
         ),
@@ -1319,7 +1415,7 @@ window.__ModuleLoader__.load({
           title: '打开小说工作台',
           onClick: launch,
         },
-        h('span', { className: 'nd-entry-icon' }, '📖'),
+        h('span', { className: 'nd-entry-icon' }, h(Icon, { name: 'book-open', size: 15 })),
         wide ? h('span', { className: 'nd-entry-label' }, '小说工作台') : null,
       )
     }
@@ -1369,7 +1465,7 @@ window.__ModuleLoader__.load({
         return h('div', { className: 'nd-overlay' },
           h('div', { className: 'nd-panel' },
             h('div', { className: 'nd-errorbox' },
-              h('span', { className: 'nd-errorbox-icon' }, '⚠'),
+              h('span', { className: 'nd-errorbox-icon' }, h(Icon, { name: 'triangle-alert', size: 14 })),
               h('div', { className: 'nd-errorbox-text' },
                 h('strong', null, '页面渲染出错了'),
                 h('p', { className: 'nd-hint', style: { whiteSpace: 'pre-wrap' } }, String((error && error.message) || error)),
@@ -1512,7 +1608,7 @@ window.__ModuleLoader__.load({
         body = h(ErrorBox, { error: projects.error, onRetry: projects.reload })
       } else if (projectList.length === 0) {
         body = h('div', { className: 'nd-welcome' },
-          h('div', { className: 'nd-welcome-icon' }, '📚'),
+          h('div', { className: 'nd-welcome-icon' }, h(Icon, { name: 'library', size: 26 })),
           h('h2', null, '还没有作品'),
           h('p', { className: 'nd-hint' }, '开一本新书：选预设、写一段想法，AI 会把世界、人物与全书大纲生成提案交给你批准。也可以让 AI 在对话里新建，或使用导入动作把旧稿接进来。'),
           h(Btn, { kind: 'primary', onClick: () => setNewBookOpen(true) }, '＋ 开新书'),
@@ -1552,7 +1648,7 @@ window.__ModuleLoader__.load({
       return h('div', { className: `nd-overlay${IS_BROWSER_TAB ? ' nd-standalone' : ''}${immersiveNow ? ' nd-immersive' : ''}` },
         h('div', { className: 'nd-panel' },
           h('header', { className: 'nd-top' },
-            h('div', { className: 'nd-brand' }, h('span', { className: 'nd-brand-icon' }, '📖'), h('strong', null, '小说工作台')),
+            h('div', { className: 'nd-brand' }, h('span', { className: 'nd-brand-icon' }, h(Icon, { name: 'book-open', size: 15 })), h('strong', null, '小说工作台')),
             h('div', { className: 'nd-proj' },
               h('span', { className: 'nd-proj-label' }, '作品'),
               projectList.length
@@ -1566,25 +1662,25 @@ window.__ModuleLoader__.load({
             h('div', { className: 'nd-top-mid' }, h('span', { className: 'nd-page-name' }, PAGE_LABEL[page] || '')),
             h('div', { className: 'nd-top-right' },
               toc.length ? h('span', { className: 'nd-top-meta' }, `${toc.length} 章 · ${fmtWords(totalWords)} 字`) : null,
-              h(Btn, { small: true, onClick: () => setExportOpen(true), disabled: !projectId, title: '导出正文：TXT / Markdown / EPUB / DOCX' }, '⬇ 导出'),
-              h(Btn, { small: true, onClick: () => go('settings'), title: '导入旧稿：设置页「📥 导入旧稿」可填目录或单个 .md/.txt' }, '⬆ 导入'),
+              h(Btn, { small: true, onClick: () => setExportOpen(true), disabled: !projectId, title: '导出正文：TXT / Markdown / EPUB / DOCX' }, withIcon('arrow-down', ' 导出')),
+              h(Btn, { small: true, onClick: () => go('settings'), title: '导入旧稿：设置页「导入旧稿」可填目录或单个 .md/.txt' }, withIcon('arrow-up', ' 导入')),
               IS_BROWSER_TAB
                 ? null
-                : h(IconBtn, { onClick: () => { void openInBrowser() }, title: '在默认浏览器打开' }, '🌐'),
-              h(IconBtn, { onClick: () => setOpen(false), title: '关闭（Esc）', className: 'nd-top-close' }, '✕'),
+                : h(IconBtn, { onClick: () => { void openInBrowser() }, title: '在默认浏览器打开' }, h(Icon, { name: 'globe', size: 13 })),
+              h(IconBtn, { onClick: () => setOpen(false), title: '关闭（Esc）', className: 'nd-top-close' }, h(Icon, { name: 'x', size: 13 })),
             ),
           ),
           h('div', { className: 'nd-principle-bar', title: '创作第一原则：所有写/改正文的工作单首行都注入它' },
-            h('span', { className: 'nd-principle-slogan' }, '⚡ ATTENTION IS ALL YOU NEED'),
+            h('span', { className: 'nd-principle-slogan' }, withIcon('zap', ' ATTENTION IS ALL YOU NEED', 14)),
             h('span', { className: 'nd-principle-text' }, '怎么吸引读者怎么来，一切为读者服务；事实自洽是底线，不是目标。写/改正文前先写一句本章的注意力目标：这一章靠什么把读者拽着往下读。注意力唯一的验收是冷读。'),
           ),
           storage.data && storage.data.engine && storage.data.engine !== 'sqlite'
             ? h('div', { className: 'nd-storage-warn', title: '存储降级提示：可在设置页查看详情' },
-                `⚠ 当前作品没有用上 SQLite（${storage.data.reason || '未知原因'}），账本与问题暂时走 JSON。可先重载插件或重启 DSH 重试；仍失败时到设置页查看诊断。`)
+                `当前作品没有用上 SQLite（${storage.data.reason || '未知原因'}），账本与问题暂时走 JSON。可先重载插件或重启 DSH 重试；仍失败时到设置页查看诊断。`)
             : null,
           body,
           // 手机兜底关闭：顶栏溢出/被裁时也一定能退出工作台回到 DSH。
-          h('button', { type: 'button', className: 'nd-mobile-close', onClick: () => setOpen(false), title: '关闭工作台', 'aria-label': '关闭工作台' }, '✕'),
+          h('button', { type: 'button', className: 'nd-mobile-close', onClick: () => setOpen(false), title: '关闭工作台', 'aria-label': '关闭工作台' }, h(Icon, { name: 'x', size: 15 })),
           exportOpen ? h(ExportDialog, { projectId, project, onClose: () => setExportOpen(false) }) : null,
           newBookOpen ? h(NewBookDialog, { onClose: () => setNewBookOpen(false), onCreated: enterNewBook }) : null,
         ),
@@ -1614,7 +1710,7 @@ window.__ModuleLoader__.load({
                   className: `nd-nav-item${page === item.id ? ' nd-nav-active' : ''}`,
                   onClick: () => go(item.id),
                 },
-                h('span', { className: 'nd-nav-icon' }, item.icon),
+                h('span', { className: 'nd-nav-icon' }, h(Icon, { name: item.icon || 'book-open', size: 14 })),
                 h('span', null, item.label),
               ),
             ),
@@ -2562,7 +2658,7 @@ window.__ModuleLoader__.load({
                         score != null ? h('span', { className: `nd-score${score >= 70 ? ' nd-score-ok' : score >= 50 ? '' : ' nd-score-warn'}` }, score) : null,
                       ),
                     ),
-                    h('button', { type: 'button', className: 'nd-toc-del', title: `删除第 ${n} 章`, onClick: (event) => { event.stopPropagation(); deleteActiveChapter(n) } }, '✕'),
+                    h('button', { type: 'button', className: 'nd-toc-del', title: `删除第 ${n} 章`, onClick: (event) => { event.stopPropagation(); deleteActiveChapter(n) } }, h(Icon, { name: 'x', size: 12 })),
                   )
                 }),
           ),
@@ -2592,11 +2688,11 @@ window.__ModuleLoader__.load({
                 h(Btn, { small: true, onClick: () => bumpPref('size', 1, 13, 28) }, 'A+'),
                 h(Btn, { small: true, onClick: () => bumpPref('lead', 0.15, 1.6, 2.4) }, '行距'),
               ),
-              h(Btn, { small: true, onClick: openChapterOpinion, title: '整章意见：不用选中文字，直接对本章提意见' }, '📄 整章意见'),
+              h(Btn, { small: true, onClick: openChapterOpinion, title: '整章意见：不用选中文字，直接对本章提意见' }, withIcon('file-text', ' 整章意见')),
               h(Btn, { small: true, onClick: () => active > 0 && setHistoryChapter(active) }, '历史版本'),
               immersive
                 ? null
-                : h(Btn, { small: true, className: 'nd-im-toggle', onClick: () => setImmersive(true), title: '沉浸模式：只留阅读 / 编辑 / 批注三个按钮，正文接近全屏（Esc 退出）' }, '⛶ 沉浸'),
+                : h(Btn, { small: true, className: 'nd-im-toggle', onClick: () => setImmersive(true), title: '沉浸模式：只留阅读 / 编辑 / 批注三个按钮，正文接近全屏（Esc 退出）' }, withIcon('maximize', ' 沉浸')),
               h('span', { className: 'nd-read-pos' }, active > 0 ? `第 ${active} 章 / ${chapters.length}` : ''),
               h('span', { className: 'nd-hint nd-mode-legend' },
                 mode === 'read'
@@ -2659,15 +2755,15 @@ window.__ModuleLoader__.load({
             ),
             h(AttentionBars, { row: activeAtt, chapter: active, projectId, onSaved: onChanged }),
             h('div', { className: 'nd-actions', style: { flexWrap: 'wrap' } },
-              h(Btn, { small: true, kind: 'primary', onClick: () => go('problems', { ask: 'reading', scope: 'chapter', chapter: active }) }, '🔍 审稿本章'),
-              h(Btn, { small: true, onClick: () => go('problems', { ask: 'facts', scope: 'chapter', chapter: active }) }, '⚖️ 事实与逻辑'),
+              h(Btn, { small: true, kind: 'primary', onClick: () => go('problems', { ask: 'reading', scope: 'chapter', chapter: active }) }, withIcon('search', ' 审稿本章')),
+              h(Btn, { small: true, onClick: () => go('problems', { ask: 'facts', scope: 'chapter', chapter: active }) }, withIcon('scale', ' 事实与逻辑')),
             ),
           ),
           h(
             SideSection,
             { title: '问题', extra: h('span', { className: 'nd-hint' }, '四类问题在问题页处理') },
             h('div', { className: 'nd-actions' },
-              h(Btn, { small: true, kind: 'primary', onClick: () => go('problems', { scope: 'chapter', chapter: active }) }, '🔍 查看本章问题'),
+              h(Btn, { small: true, kind: 'primary', onClick: () => go('problems', { scope: 'chapter', chapter: active }) }, withIcon('search', ' 查看本章问题')),
               h(Btn, { small: true, onClick: () => go('problems') }, '全部问题'),
             ),
           ),
@@ -3370,9 +3466,9 @@ window.__ModuleLoader__.load({
             h('p', { className: 'nd-hint' }, '作者意见与 AI 意见分开。AI 意见只分三类：去 AI 化 / 事实逻辑 / 注意力（冷读）；AI 意见带地址和改法，采纳即替换该段。')),
           h('div', { className: 'nd-page-actions' },
             h(Btn, { small: true, onClick: reload, disabled: res.loading }, '刷新'),
-            h(Btn, { small: true, kind: 'primary', onClick: () => { setColdOpen(true); setColdFocus('') } }, '❄️ 全文冷读（注意力）'),
-            h(Btn, { small: true, onClick: () => makeReviewWorkorder('ai-style', []), disabled: Boolean(busy) }, '🤖 全文去 AI 化'),
-            h(Btn, { small: true, onClick: () => makeReviewWorkorder('logic', []), disabled: Boolean(busy) }, '⚖️ 全文逻辑审核'),
+            h(Btn, { small: true, kind: 'primary', onClick: () => { setColdOpen(true); setColdFocus('') } }, withIcon('snowflake', ' 全文冷读（注意力）')),
+            h(Btn, { small: true, onClick: () => makeReviewWorkorder('ai-style', []), disabled: Boolean(busy) }, withIcon('bot', ' 全文去 AI 化')),
+            h(Btn, { small: true, onClick: () => makeReviewWorkorder('logic', []), disabled: Boolean(busy) }, withIcon('scale', ' 全文逻辑审核')),
           ),
         ),
         notice ? h(Msg, { tone: notice.tone, onClose: () => setNotice(null) }, notice.text) : null,
@@ -3405,14 +3501,14 @@ window.__ModuleLoader__.load({
           })()),
           h(Btn, { small: true, onClick: toggleAllVisible, disabled: !visibleIds.length }, allVisibleChecked ? '取消全选' : '全选'),
           h(Btn, { small: true, onClick: () => setPicked([]), disabled: !picked.length }, '清空'),
-          h(Btn, { small: true, kind: 'primary', onClick: makeFixWorkorder, disabled: !picked.length || Boolean(busy) }, busy === 'fix' ? '生成中…' : `🤖 让 AI 批量改${picked.length ? `（${picked.length}）` : ''}`),
+          h(Btn, { small: true, kind: 'primary', onClick: makeFixWorkorder, disabled: !picked.length || Boolean(busy) }, busy === 'fix' ? '生成中…' : withIcon('bot', ` 让 AI 批量改${picked.length ? `（${picked.length}）` : ''}`)),
         ),
         res.error ? h(ErrorBox, { error: res.error, onRetry: res.reload }) : null,
         res.loading && !rows.length ? h(Loading, null, '读取意见…') : null,
         !res.loading && !groups.length ? h('p', { className: 'nd-hint' }, who === 'author' ? '还没有作者意见：正文页切到「批注」，选中文字或点「整章意见」提交。' : '这个分类下还没有 AI 意见。去 AI 化的入口在正文选区里；事实逻辑先跑「全书同步」或让它出意见；注意力用右上角冷读。') : null,
         h('section', { className: 'nd-card' },
           h('div', { className: 'nd-card-head' },
-            h('h3', null, '🧪 本地检查（0 AI 成本）'),
+            h('h3', null, withIcon('flask-conical', ' 本地检查（0 AI 成本）', 14)),
             localChecks ? h('span', { className: 'nd-hint' }, `事实逻辑 ${localChecks.counts?.logic || 0} ｜ 去 AI 化 ${localChecks.counts?.deai || 0}${localAt ? ` ｜ 上次扫描 ${localAt}` : ''}（正文改过再点重新扫描）`) : h('span', { className: 'nd-hint' }, '只在点「扫描」时跑；结果会保留，切页回来不用重扫'),
             h(Btn, { small: true, kind: localChecks ? undefined : 'primary', onClick: scanLocal, disabled: localScanning }, localScanning ? '扫描中…' : localChecks ? '重新扫描' : '扫描全文'),
             localChecks && localChecks.items && localChecks.items.length && go ? h(Btn, { small: true, onClick: () => go('read', { chapter: Number(localChecks.items[0].chapter), marks: localChecks.items.flatMap((row) => itemMarks(row)) }) }, '全部高亮') : null,
@@ -4161,7 +4257,7 @@ window.__ModuleLoader__.load({
                 },
               }, '定位正文') : null,
               canRevise ? h(Btn, { small: true, kind: 'primary', disabled: Boolean(busy), onClick: () => openRevise([rowId]) }, '继续改') : null,
-              row.reviewSessionId ? h(Btn, { small: true, disabled: Boolean(busy), onClick: () => setChatDialog({ problemId: rowId, text: '', sessionId: row.reviewSessionId }) }, '💬 继续聊') : null,
+              row.reviewSessionId ? h(Btn, { small: true, disabled: Boolean(busy), onClick: () => setChatDialog({ problemId: rowId, text: '', sessionId: row.reviewSessionId }) }, withIcon('message-circle', ' 继续聊')) : null,
               rowStatus === 'ignored'
                 ? h(Btn, { small: true, disabled: Boolean(busy), onClick: () => ignoreProblem(rowId, false) }, '撤销忽略')
                 : rowStatus !== 'accepted' ? h(Btn, { small: true, disabled: Boolean(busy), onClick: () => ignoreProblem(rowId, true) }, '忽略') : null,
@@ -4245,22 +4341,22 @@ window.__ModuleLoader__.load({
           h('div', { className: 'nd-page-head' },
             h('div', null,
               h('h2', null, '问题'),
-              h('p', { className: 'nd-hint' }, '审稿一次读完一份 TXT，产出「问题」；每条问题带能直接顶替原文的修改稿。采纳 → 正文更新；不满意就「继续改」（可勾选批量）。作者自己提问题用「＋ 作者提问题」；想到哪说到哪、需要 AI 边聊边改，用「💭 宏观提议」。'),
+              h('p', { className: 'nd-hint' }, '审稿一次读完一份 TXT，产出「问题」；每条问题带能直接顶替原文的修改稿。采纳 → 正文更新；不满意就「继续改」（可勾选批量）。作者自己提问题用「＋ 作者提问题」；想到哪说到哪、需要 AI 边聊边改，用「宏观提议」。'),
             ),
             h('div', { className: 'nd-page-actions' },
               h(Btn, { small: true, onClick: reload, disabled: res.loading || Boolean(busy) }, res.loading ? '刷新中…' : '刷新'),
               h(Btn, { small: true, onClick: openAuthorDialog, disabled: Boolean(busy) }, '＋ 作者提问题'),
-              h(Btn, { small: true, onClick: () => { setNotice(null); setMacroDialog({ text: '' }) }, disabled: Boolean(busy) }, '💭 宏观提议（想到哪说哪）'),
-              h(Btn, { small: true, kind: 'primary', onClick: () => openReviewDialog('reading'), disabled: Boolean(busy) }, '📖 通读审（冷读+去 AI 化）'),
-              h(Btn, { small: true, onClick: () => openReviewDialog('facts'), disabled: Boolean(busy) }, '⚖️ 事实与逻辑'),
-              h(Btn, { small: true, onClick: () => openRevise(picked), disabled: !picked.length || Boolean(busy) }, `✍️ 批量继续改（${picked.length}）`),
+              h(Btn, { small: true, onClick: () => { setNotice(null); setMacroDialog({ text: '' }) }, disabled: Boolean(busy) }, withIcon('lightbulb', ' 宏观提议（想到哪说哪）')),
+              h(Btn, { small: true, kind: 'primary', onClick: () => openReviewDialog('reading'), disabled: Boolean(busy) }, withIcon('book-open', ' 通读审（冷读+去 AI 化）')),
+              h(Btn, { small: true, onClick: () => openReviewDialog('facts'), disabled: Boolean(busy) }, withIcon('scale', ' 事实与逻辑')),
+              h(Btn, { small: true, onClick: () => openRevise(picked), disabled: !picked.length || Boolean(busy) }, withIcon('pen-tool', ` 批量继续改（${picked.length}）`)),
             ),
           ),
           notice ? h(Msg, { tone: notice.tone, onClose: () => setNotice(null) }, notice.text) : null,
           res.error ? h(ErrorBox, { error: res.error, onRetry: res.reload }) : null,
           h('section', { className: 'nd-card' },
             h('div', { className: 'nd-card-head' },
-              h('h3', null, '🗒 审稿记录'),
+              h('h3', null, withIcon('sticky-note', ' 审稿记录', 14)),
               h('span', { className: 'nd-hint' }, '最近 5 条；「事实扫库」记录可直接让 AI 审这一版。'),
             ),
             reviews.length
@@ -4299,8 +4395,8 @@ window.__ModuleLoader__.load({
             ? h(Empty, {
                 action: rows.length
                   ? h(Btn, { small: true, onClick: resetFilters }, '清空筛选')
-                  : h(Btn, { kind: 'primary', onClick: () => openReviewDialog('reading'), disabled: Boolean(busy) }, '📖 开始通读审'),
-              }, rows.length ? '当前筛选下没有问题。' : '还没有问题。作者可点「＋ 作者提问题」（具体问题）或「💭 宏观提议」（想到哪说哪、可与 AI 多轮沟通）；正文批注 / 整章意见也进同一张问题单。')
+                  : h(Btn, { kind: 'primary', onClick: () => openReviewDialog('reading'), disabled: Boolean(busy) }, withIcon('book-open', ' 开始通读审')),
+              }, rows.length ? '当前筛选下没有问题。' : '还没有问题。作者可点「＋ 作者提问题」（具体问题）或「宏观提议」（想到哪说哪、可与 AI 多轮沟通）；正文批注 / 整章意见也进同一张问题单。')
             : h('div', { className: 'nd-opinions' }, visibleRows.map(renderProblem)),
         ),
         reviewDialog ? h(Modal, {
@@ -5059,7 +5155,7 @@ window.__ModuleLoader__.load({
                       h('div', { className: 'nd-proposal-head', role: 'button', tabIndex: 0, onClick: () => openProposal(proposal), onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProposal(proposal) } } },
                         pending ? h('span', { className: 'nd-form-row', onClick: (e) => e.stopPropagation() },
                           h(Check, { checked: selected.includes(proposal.id), title: '选择这条提案', onChange: () => toggleSelect(proposal.id) })) : null,
-                        h('span', { className: 'nd-proposal-arrow' }, expanded ? '▾' : '▸'),
+                        h('span', { className: 'nd-proposal-arrow' }, expanded ? h(Icon, { name: 'chevron-down', size: 13 }) : h(Icon, { name: 'chevron-right', size: 13 })),
                         h('span', { className: 'nd-proposal-title' }, String(proposal.title || proposal.id)),
                         h(Tag, { tone: 'brand' }, PROPOSAL_KIND[proposal.kind] || proposal.kind),
                         h('span', { className: 'nd-proposal-digest' }, proposalDigest(proposal)),
@@ -5271,7 +5367,7 @@ window.__ModuleLoader__.load({
           ? h('p', { className: 'nd-hint' }, '这本书还没有章节：直接填章号（从头写默认从第 1 章开始）。')
           : null,
         chapterRewriteBlocked
-          ? h('p', { className: 'nd-hint' }, '⚠ 单章改写请回正文页「重写本章」走整章改写稿（采纳后才覆盖正文）；全文动作用于整书/区间。')
+          ? h('p', { className: 'nd-hint' }, '单章改写请回正文页「重写本章」走整章改写稿（采纳后才覆盖正文）；全文动作用于整书/区间。')
           : null,
         overwriting
           ? h('label', { className: 'nd-checkline', style: { alignItems: 'flex-start', padding: '4px 0' } },
@@ -5474,7 +5570,7 @@ window.__ModuleLoader__.load({
           ),
           (run.status === 'running' || run.status === 'paused')
             ? h('div', { className: 'nd-banner nd-banner-warn' },
-                h('span', null, '⚠ 工作台的「暂停 / 完成 / 中止」只更新工作台状态，**不会停止左侧对话里正在跑的 AI**。要真正停止，请到对话里中断/停止该会话，或关闭 DSH 页面；否则 AI 会继续跑并继续产生费用。'),
+                h('span', null, '工作台的「暂停 / 完成 / 中止」只更新工作台状态，**不会停止左侧对话里正在跑的 AI**。要真正停止，请到对话里中断/停止该会话，或关闭 DSH 页面；否则 AI 会继续跑并继续产生费用。'),
               )
             : null,
           notice ? h(Msg, { tone: notice.tone, onClose: () => setNotice(null) }, notice.text) : null,
@@ -5529,7 +5625,7 @@ window.__ModuleLoader__.load({
           h('span', { className: 'nd-hint' }, '整本书级动作只有一份状态（run 单例）。从头写=新章过闸门直接落盘；改写/扩写=作者两次确认后直接覆盖正文（覆盖前自动备份，可在正文页该章「历史版本」找回）；单章重写请回正文页「重写本章」。'),
         ),
         h('div', { className: 'nd-attention-note' },
-          h('strong', null, '⚡ 第一步永远是注意力设计'),
+          h('strong', null, withIcon('zap', ' 第一步永远是注意力设计', 14)),
           h('span', null, '开工前先写一句本章的注意力目标（靠什么把读者拽着往下读）；不要求四拍。写完后冷读独立打分。'),
         ),
         notice && !run ? h(Msg, { tone: notice.tone, onClose: () => setNotice(null) }, notice.text) : null,
@@ -6714,9 +6810,9 @@ window.__ModuleLoader__.load({
         h('div', { className: 'nd-map-toolbar' },
           h('span', { className: 'nd-hint' },
             `${locations.length} 个地点 · ${withCoords.length} 个有坐标 · 区域 ${scene.regions.length} · 路线 ${scene.routes.length}`),
-          h(Btn, { small: true, kind: 'brand', onClick: () => setOpen(true) }, '🗺 打开全屏地图'),
-          h(Btn, { small: true, onClick: genBackground, disabled: mapBusy === 'bg' }, mapBusy === 'bg' ? '生成中…' : '🎨 生成底图'),
-          h(Btn, { small: true, kind: 'primary', onClick: generateMapPlan, disabled: mapBusy === 'plan' }, mapBusy === 'plan' ? '发送中…' : '🧭 生成地图方案（直接入库）'),
+          h(Btn, { small: true, kind: 'brand', onClick: () => setOpen(true) }, withIcon('map', ' 打开全屏地图')),
+          h(Btn, { small: true, onClick: genBackground, disabled: mapBusy === 'bg' }, mapBusy === 'bg' ? '生成中…' : withIcon('palette', ' 生成底图')),
+          h(Btn, { small: true, kind: 'primary', onClick: generateMapPlan, disabled: mapBusy === 'plan' }, mapBusy === 'plan' ? '发送中…' : withIcon('compass', ' 生成地图方案（直接入库）')),
           h(Btn, { small: true, onClick: () => go('ledger', { tab: 'locations' }) }, '编辑坐标'),
         ),
         mapError ? h('p', { className: 'nd-hint', style: { color: '#b45309' } }, `地图操作失败：${mapError}`) : null,
@@ -6916,7 +7012,7 @@ window.__ModuleLoader__.load({
               h('div', { className: 'nd-tl-meta' },
                 item.parts.raw ? h('span', { className: 'nd-tag nd-tag-brand' }, item.parts.raw) : h('span', { className: 'nd-tag nd-tag-muted' }, '时间未标'),
                 chapterNo(ev) > 0 ? h('button', { type: 'button', className: 'nd-linkbtn', onClick: () => openChapter(chapterNo(ev)) }, `第 ${chapterNo(ev)} 章`) : null,
-                ev.location ? h('span', { className: 'nd-tag' }, `📍 ${ev.location}`) : null,
+                ev.location ? h('span', { className: 'nd-tag' }, withIcon('map-pin', ` ${ev.location}`, 11)) : null,
                 ev.importance === 'climax' ? h('span', { className: 'nd-tag nd-tag-error' }, '高潮') : ev.importance === 'major' ? h('span', { className: 'nd-tag nd-tag-warn' }, '关键') : null,
                 h('span', { className: 'nd-tl-title' }, String(ev.title || '未命名事件')),
                 h('span', { className: 'nd-tl-edit' }, h(Btn, { small: true, onClick: () => onEdit(ev) }, '编辑')),
@@ -6933,14 +7029,14 @@ window.__ModuleLoader__.load({
 
     // ── 页 7：账本（资料库） ─────────────────────────────────
     const LEDGER_TABS = [
-      { id: 'facts', label: '⚖️ 事实库' },
-      { id: 'characters', label: '👤 人物卡' },
-      { id: 'events', label: '🕰️ 时间线' },
-      { id: 'locations', label: '🏙️ 地点' },
-      { id: 'map', label: '🗺️ 世界地图' },
-      { id: 'highlights', label: '✨ 高光' },
-      { id: 'conflicts', label: '⚔️ 冲突' },
-      { id: 'foreshadow', label: '🧩 伏笔' },
+      { id: 'facts', label: withIcon('scale', ' 事实库', 13) },
+      { id: 'characters', label: withIcon('user', ' 人物卡', 13) },
+      { id: 'events', label: withIcon('clock', ' 时间线', 13) },
+      { id: 'locations', label: withIcon('building-2', ' 地点', 13) },
+      { id: 'map', label: withIcon('map', ' 世界地图', 13) },
+      { id: 'highlights', label: withIcon('sparkles', ' 高光', 13) },
+      { id: 'conflicts', label: withIcon('swords', ' 冲突', 13) },
+      { id: 'foreshadow', label: withIcon('puzzle', ' 伏笔', 13) },
     ]
     function LedgerTab({ projectId, go, openChapter, pageArg, onChanged }) {
       const ledgerRes = useAsync(() => api('ledger.get', scope(projectId)), [projectId])
@@ -7093,7 +7189,7 @@ window.__ModuleLoader__.load({
           const value = await api('ledger.sync', scope(projectId, { action: 'workorder', mode: 'full' }))
           if (value && value.done) {
             setFullDialog(false)
-            setNotice({ tone: 'ok', text: '全部批次已同步完成 🎉' })
+            setNotice({ tone: 'ok', text: '全部批次已同步完成' })
             refresh()
             return
           }
@@ -7184,7 +7280,7 @@ window.__ModuleLoader__.load({
           ),
           h('div', { className: 'nd-page-actions' },
             h(Btn, { small: true, onClick: () => { ledgerRes.reload(); syncRes.reload() }, disabled: ledgerRes.loading }, '刷新'),
-            h(Btn, { small: true, onClick: openFullSync }, '📚 全书同步'),
+            h(Btn, { small: true, onClick: openFullSync }, withIcon('library', ' 全书同步')),
             isTable ? h(Btn, { small: true, kind: 'primary', onClick: () => setForm({ kind, item: {}, editing: false }) }, addLabel) : null,
             kind === 'characters' ? h(Btn, { small: true, kind: 'primary', onClick: () => setForm({ kind, item: {}, editing: false }) }, addLabel) : null,
           ),
@@ -7193,7 +7289,7 @@ window.__ModuleLoader__.load({
         dbRes.data && dbRes.data.stats
           ? h('div', { className: 'nd-card nd-ledger-db' },
               h('div', { className: 'nd-card-head' },
-                h('h3', null, '🗄️ 账本数据库'),
+                h('h3', null, withIcon('database', ' 账本数据库', 14)),
                 h(Btn, { small: true, onClick: () => dbRes.reload() }, '刷新'),
                 h(Btn, { small: true, onClick: rebuildMentions, disabled: busy === 'mentions' }, busy === 'mentions' ? '重建中…' : '重建提及'),
                 h(Btn, { small: true, kind: 'primary', onClick: openFullSync }, '首次建账 / 全书同步'),
@@ -7215,7 +7311,7 @@ window.__ModuleLoader__.load({
           : null,
         pending.length > 0
           ? h('div', { className: 'nd-banner nd-banner-warn' },
-              h('span', null, `⚠ 第 ${pending.map((row) => row.chapter).join('、')} 章正文改到了账本里的名字/数字，可能需要同步`),
+              h('span', null, `第 ${pending.map((row) => row.chapter).join('、')} 章正文改到了账本里的名字/数字，可能需要同步`),
               h('span', { className: 'nd-hint' }, pending.map((row) => (row.reasons || []).slice(0, 3).join('、')).filter(Boolean).join(' ｜ ')),
               h(Btn, { small: true, onClick: openSync, disabled: busy === 'sync' }, busy === 'sync' ? '生成中…' : '让 AI 核对'),
               h(Btn, { small: true, onClick: ackSync, disabled: busy === 'ack' }, '已核对，忽略'),
@@ -7223,12 +7319,12 @@ window.__ModuleLoader__.load({
           : null,
         full && full.done < full.total
           ? h('div', { className: 'nd-banner' },
-              h('span', null, `📚 全书账本同步进行中：已完成 ${full.done}/${full.total} 批（共 ${full.from}–${full.to} 章）`),
+              h('span', null, withIcon('library', ` 全书账本同步进行中：已完成 ${full.done}/${full.total} 批（共 ${full.from}–${full.to} 章）`)),
               h(Btn, { small: true, onClick: openFullSync }, '继续'),
             )
           : !full && chapters >= 5
             ? h('div', { className: 'nd-banner' },
-                h('span', null, '📄 正文已经写完？全书账本还是旧的，可以让 AI 分批核对一遍'),
+                h('span', null, withIcon('file-text', ' 正文已经写完？全书账本还是旧的，可以让 AI 分批核对一遍')),
                 h(Btn, { small: true, onClick: openFullSync }, '全书同步'),
               )
             : null,
@@ -7559,7 +7655,7 @@ window.__ModuleLoader__.load({
         ),
         h('section', { className: 'nd-hero' },
           h('div', { className: 'nd-hero-main' },
-            h('div', { className: 'nd-hero-slogan' }, '⚡ ATTENTION IS ALL YOU NEED'),
+            h('div', { className: 'nd-hero-slogan' }, withIcon('zap', ' ATTENTION IS ALL YOU NEED', 14)),
             h('p', { className: 'nd-hero-sub' }, '每章先定注意力（钩子 / 张力 / 回报 / 章末牵引），再写正文；事实自洽是底线，不是目标。'),
           ),
           h('div', { className: 'nd-hero-stats' },
@@ -7589,7 +7685,7 @@ window.__ModuleLoader__.load({
         ),
         h('div', { className: 'nd-two-col' },
           h('section', { className: 'nd-card' },
-            h('div', { className: 'nd-card-head' }, h('h3', null, '📈 注意力曲线'), h('span', { className: 'nd-hint' }, `最近 ${Math.min(scored.length, 40)} 章`), h(Btn, { small: true, onClick: () => go('problems') }, '去问题页')),
+            h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('trending-up', ' 注意力曲线', 14)), h('span', { className: 'nd-hint' }, `最近 ${Math.min(scored.length, 40)} 章`), h(Btn, { small: true, onClick: () => go('problems') }, '去问题页')),
             curve
               ? h('svg', { className: 'nd-curve', viewBox: `0 0 ${curve.w} ${curve.h}`, preserveAspectRatio: 'xMidYMid meet' },
                   [0, 25, 50, 75, 100].map((level) => {
@@ -7627,7 +7723,7 @@ window.__ModuleLoader__.load({
               : null,
           ),
           h('section', { className: 'nd-card' },
-            h('div', { className: 'nd-card-head' }, h('h3', null, '🔎 待办')),
+            h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('scan-search', ' 待办', 14))),
             h('div', { className: 'nd-todo-group' }, h('span', { className: 'nd-hint' }, `待处理意见 ${openReviews.length} 条`)),
             openReviews.length
               ? openReviews.slice(0, 6).map((rv, i) =>
@@ -7656,7 +7752,7 @@ window.__ModuleLoader__.load({
             h('div', { className: 'nd-route-bars' },
               routeCounts.map((route) =>
                 h('div', { className: 'nd-route-row', key: route.id },
-                  h('span', { className: 'nd-route-label' }, `${route.icon} ${route.label}`),
+                  h('span', { className: 'nd-route-label' }, h(Icon, { name: route.icon, size: 12 }), ` ${route.label}`),
                   h(Bar, { value: route.count, max: Math.max(1, ...routeCounts.map((r) => r.count)) }),
                   h('span', { className: 'nd-route-count' }, String(route.count)),
                 ),
@@ -7666,11 +7762,11 @@ window.__ModuleLoader__.load({
         ),
         h('div', { className: 'nd-two-col' },
           h('section', { className: 'nd-card' },
-            h('div', { className: 'nd-card-head' }, h('h3', null, '💳 用量'), usageRes.loading ? h('span', { className: 'nd-hint' }, '读取中…') : null),
+            h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('credit-card', ' 用量', 14)), usageRes.loading ? h('span', { className: 'nd-hint' }, '读取中…') : null),
             usageRes.error ? h(ErrorBox, { error: usageRes.error, onRetry: () => usageRes.reload() }) : h(KeyValue, { rows: usageRows, emptyText: '还没有用量记录' }),
           ),
           h('section', { className: 'nd-card' },
-            h('div', { className: 'nd-card-head' }, h('h3', null, '🧭 版本对齐'), alignRes.loading ? h('span', { className: 'nd-hint' }, '读取中…') : null),
+            h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('git-compare', ' 版本对齐', 14)), alignRes.loading ? h('span', { className: 'nd-hint' }, '读取中…') : null),
             alignRes.error ? h(ErrorBox, { error: alignRes.error, onRetry: () => alignRes.reload() }) : h(KeyValue, { rows: alignRows, emptyText: '还没有对齐记录' }),
           ),
         ),
@@ -7956,7 +8052,7 @@ window.__ModuleLoader__.load({
         h(TitleMigrationCard, { projectId }),
         storageRes.data
           ? h('section', { className: 'nd-card' },
-              h('div', { className: 'nd-card-head' }, h('h3', null, '🧾 账本数据库')),
+              h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('receipt', ' 账本数据库', 14))),
               h('p', { className: 'nd-hint' }, storageRes.data.ledger
                 ? `实体 ${storageRes.data.ledger.entities} ｜ 提及 ${storageRes.data.ledger.mentions} ｜ 事实 ${storageRes.data.ledger.facts} ｜ 事件 ${storageRes.data.ledger.events} ｜ 高光 ${storageRes.data.ledger.highlights} ｜ 待确认专名 ${storageRes.data.ledger.unknown}`
                 : '账本数据库尚未建立。'),
@@ -7976,7 +8072,7 @@ window.__ModuleLoader__.load({
         h(UpdateCard, null),
         rolesRes.data && Array.isArray(rolesRes.data.roles)
           ? h('section', { className: 'nd-card' },
-              h('div', { className: 'nd-card-head' }, h('h3', null, '🧑‍🤝‍🧑 分工（7 角色）')),
+              h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('users-round', ' 分工（7 角色）', 14))),
               h('p', { className: 'nd-hint' }, '每次派单指定一个角色、由子 agent 完成；主对话（编辑）只验收地址与格式，不重读正文。'),
               h('div', { className: 'nd-role-list' },
                 rolesRes.data.roles.map((role) => h('div', { className: 'nd-role', key: role.id },
@@ -7989,7 +8085,7 @@ window.__ModuleLoader__.load({
           : null,
         storageRes.data
           ? h('section', { className: 'nd-card' },
-              h('div', { className: 'nd-card-head' }, h('h3', null, '🗄️ 数据存储')),
+              h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('database', ' 数据存储', 14))),
               h('p', { className: 'nd-hint' },
                 storageRes.data.engine === 'sqlite'
                   ? `SQLite（Node ${storageRes.data.node}）：账本、意见、段落索引按库查询；正文保存后本地增量同步，不消耗 AI。`
@@ -8002,7 +8098,7 @@ window.__ModuleLoader__.load({
         form
           ? h('div', { className: 'nd-two-col' },
               h('section', { className: 'nd-card' },
-                h('div', { className: 'nd-card-head' }, h('h3', null, '✍️ 作品参数')),
+                h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('pen-tool', ' 作品参数', 14))),
                 h(Field, { label: '作品标题' }, h(TextInput, { value: form.title, onChange: (v) => set('title', v), placeholder: '作品标题' })),
                 h(Field, { label: '类型' }, h(TextInput, { value: form.genre, onChange: (v) => set('genre', v), placeholder: '如 古代言情 / 都市悬疑' })),
                 h(Field, { label: '风格要求', hint: '会作为写作预设的一部分传给 AI' }, h(TextArea, { value: form.style, rows: 4, onChange: (v) => set('style', v) })),
@@ -8013,12 +8109,12 @@ window.__ModuleLoader__.load({
                 'div',
                 null,
                 h('section', { className: 'nd-card' },
-                  h('div', { className: 'nd-card-head' }, h('h3', null, '📤 导出正文')),
+                  h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('upload', ' 导出正文', 14))),
                   h('p', { className: 'nd-hint' }, '把全部章节导出成成品：TXT / Markdown / EPUB / DOCX。正文纯文本，成品不会漏出写作期的 Markdown 标记。'),
                   h(ExportQuick, { projectId }),
                 ),
                 h('section', { className: 'nd-card' },
-                  h('div', { className: 'nd-card-head' }, h('h3', null, '📥 导入旧稿')),
+                  h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('download', ' 导入旧稿', 14))),
                   h('p', { className: 'nd-hint' }, '任何作品都能导入：给一个目录或单个 .md / .txt 文件即可，不要求 0001.md 这种命名。目录会按自然顺序每个文件当一章；单文件可以按「第X章」标题自动拆章。扫描只读，导入会新建一部作品，原目录不动。'),
                   h('div', { className: 'nd-form-row' },
                     h(TextInput, { value: importPath, onChange: setImportPath, placeholder: '/path/to/旧稿目录 或 一本书.md' }),
@@ -8029,7 +8125,7 @@ window.__ModuleLoader__.load({
                   importedId && openProject ? h(Btn, { small: true, onClick: () => openProject(importedId) }, '打开新作品') : null,
                 ),
                 h('section', { className: 'nd-card' },
-                  h('div', { className: 'nd-card-head' }, h('h3', null, '💰 预算上限')),
+                  h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('wallet', ' 预算上限', 14))),
                   h('p', { className: 'nd-hint' },
                     '预算只用于全文动作（从头写 / 扩写 / 改写）；正文页的动作按单章预算走。',
                   ),
@@ -8038,7 +8134,7 @@ window.__ModuleLoader__.load({
                 ),
                 h('section', { className: 'nd-card' },
                   h('div', { className: 'nd-card-head' },
-                    h('h3', null, '📚 写作预设'),
+                    h('h3', null, withIcon('library', ' 写作预设', 14)),
                     h('div', { className: 'nd-row-actions' },
                       h(Btn, { small: true, onClick: () => setPresetDialog({ initial: null, title: '新建预设' }) }, '＋ 新建'),
                       h(Btn, { small: true, onClick: async () => {
@@ -8082,7 +8178,7 @@ window.__ModuleLoader__.load({
                   ),
                 ),
                 h('section', { className: 'nd-card' },
-                  h('div', { className: 'nd-card-head' }, h('h3', null, '📁 数据位置（只读）')),
+                  h('div', { className: 'nd-card-head' }, h('h3', null, withIcon('folder', ' 数据位置（只读）', 14))),
                   h(KeyValue, { rows: projectRows, emptyText: '还没有读取到作品信息' }),
                   h('p', { className: 'nd-hint' }, '作品数据在自己的书工作区（普通 Markdown / JSON 文件）；插件私有索引在 ~/.dsh/data/dsh-long-novel-workbench，与小说工作区隔离。'),
                 ),
@@ -8391,35 +8487,46 @@ const CSS_EXTRA = `
     // 2) 用少量规则补齐「纸墨」质感（衬线标题、暖色分隔、克制的强调色）。
     // 注：亮色工作台不跟随宿主暗色主题——正文本来就是亮的，外壳跟着一起亮才不割裂。
     const THEME_CSS = `
+/* 主题层：纸、墨、朱砂 —— 依《UI设计规范.md》
+   只做颜色 / 字体 / 圆角 / 阴影 / 字阶；布局与交互一律不动。 */
 .nd-overlay{
-  --nd-ink:#2a251d;
-  --nd-ink-2:#4a4235;
-  --nd-ink-3:#6f6658;
-  --nd-ink-4:#857a69;
-  --nd-desk:#fbf8f1;
-  --nd-desk-2:#f5f0e4;
-  --nd-desk-3:#ebe3d1;
-  --nd-line:#e2d8c3;
-  --nd-line-2:#eee7d8;
-  --nd-brand:#3c5a6b;
-  --nd-brand-strong:#2f4a59;
-  --nd-brand-weak:rgba(60,90,107,.10);
-  --nd-ok:#4a7a52;
-  --nd-ok-strong:#3c6644;
-  --nd-ok-weak:rgba(74,122,82,.12);
-  --nd-warn:#9a6f1c;
-  --nd-warn-strong:#7f5b12;
-  --nd-warn-weak:rgba(154,111,28,.13);
-  --nd-error:#a83c2e;
-  --nd-error-strong:#8d2f22;
-  --nd-error-weak:rgba(168,60,46,.10);
-  --nd-gold:#b3842b;
-  --nd-gold-weak:rgba(179,132,43,.12);
-  --nd-font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
-  --nd-font-serif:Georgia,"Songti SC","Source Han Serif SC","Noto Serif CJK SC","SimSun",serif;
-  --nd-shadow-1:0 1px 2px rgba(72,58,36,.05),0 2px 10px rgba(72,58,36,.04);
-  --nd-shadow-2:0 14px 36px rgba(48,38,22,.14);
-  --nd-hover:rgba(94,74,42,.06);
+  /* 纸 */
+  --nd-desk:#f4f1ea;
+  --nd-desk-2:#f0eee6;
+  --nd-desk-3:#eae6dc;
+  --nd-panel:#fbfaf6;
+  --nd-card:#ffffff;
+  --nd-sheet:#f6f2e9;
+  /* 墨 */
+  --nd-ink:#23262b;
+  --nd-ink-2:#3c4149;
+  --nd-ink-3:#70777f;
+  --nd-ink-4:#7d848c;
+  /* 朱砂：只给「激活 / 主 CTA / 语义强调」 */
+  --nd-brand:#a8402c;
+  --nd-brand-strong:#8c3524;
+  --nd-brand-weak:#f3e8e2;
+  /* 线 */
+  --nd-line:#e4e2d9;
+  --nd-line-2:#eeece4;
+  /* 语义 */
+  --nd-ok:#2e7d32;--nd-ok-strong:#26622a;--nd-ok-weak:#e9f3e9;
+  --nd-warn:#b8860b;--nd-warn-strong:#8a6508;--nd-warn-weak:#f7efdc;
+  --nd-error:#b23a48;--nd-error-strong:#8f2f3b;--nd-error-weak:#f9e7ea;
+  --nd-info:#58708a;--nd-info-weak:rgba(88,112,138,.08);
+  /* 顶栏：墨底 */
+  --nd-top:#20242b;--nd-top-text:#edeff2;--nd-top-sub:#9aa3ae;--nd-top-line:#3a4250;
+  /* 字体：界面无衬线，正文中文衬线 + 西文 Georgia */
+  --nd-font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",Arial,sans-serif;
+  --nd-font-serif:"Songti SC","Noto Serif SC","Source Han Serif SC","Source Han Serif CN",SimSun,ui-serif,Georgia,Cambria,"Times New Roman",serif;
+  --nd-font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"source code pro",monospace;
+  /* 圆角分级：小件 4/5，按钮 7，卡片 8，浮层 13 */
+  --nd-r-xs:4px;--nd-r-sm:5px;--nd-r-btn:7px;--nd-r:8px;--nd-r-lg:13px;--nd-r-pill:999px;
+  /* 阴影：统一暖棕相 rgb(64 50 38) */
+  --nd-shadow-1:0 1px 3px rgba(64,50,38,.07),0 6px 20px rgba(64,50,38,.08);
+  --nd-shadow-2:0 6px 16px rgba(64,50,38,.12),0 6px 10px -3px rgba(64,50,38,.07);
+  --nd-shadow-3:0 8px 24px rgba(64,50,38,.14),0 2px 6px rgba(64,50,38,.06);
+  --nd-hover:rgba(64,50,38,.06);
 
   --dsw-alias-bg:var(--nd-desk);
   --dsw-alias-bg-elevated:var(--nd-desk-2);
@@ -8429,68 +8536,80 @@ const CSS_EXTRA = `
   --dsw-alias-fg-muted:var(--nd-ink-3);
   --dsw-alias-brand:var(--nd-brand);
   --dsw-alias-brand-weak:var(--nd-brand-weak);
-  --dsw-alias-brand-fg:#fdfbf6;
+  --dsw-alias-brand-fg:#fff8f4;
   --dsw-alias-error:var(--nd-error);
-  --dsw-alias-scrim:rgba(31,27,20,.36);
+  --dsw-alias-scrim:rgba(32,28,22,.34);
 
   font-family:var(--nd-font-ui);
   color:var(--nd-ink);
   -webkit-font-smoothing:antialiased;
 }
-.nd-overlay ::selection{background:rgba(179,132,43,.24);color:inherit}
+.nd-overlay ::selection{background:rgba(168,64,44,.16);color:inherit}
 
-/* 纸面：外壳、顶栏、侧栏 ────────────────────────────────── */
-.nd-panel{background:var(--nd-desk);border:1px solid var(--nd-line);box-shadow:0 30px 80px rgba(28,23,15,.32),0 2px 6px rgba(28,23,15,.10)}
-.nd-top{background:linear-gradient(180deg,#fdfaf4,#f7f2e6);border-bottom:1px solid var(--nd-line)}
-.nd-brand{font-family:var(--nd-font-serif);font-size:15px;font-weight:600;letter-spacing:.08em;color:var(--nd-ink)}
-.nd-page-name{font-size:12px;letter-spacing:.06em;color:var(--nd-ink-3)}
-.nd-top-meta{font-size:11px;color:var(--nd-ink-3);font-variant-numeric:tabular-nums}
-.nd-iconbtn,.nd-top-close{color:var(--nd-ink-3)}
-.nd-iconbtn:hover{background:var(--nd-hover);color:var(--nd-ink)}
-.nd-nav,.nd-toc{background:linear-gradient(180deg,var(--nd-desk-2),#f7f2e5);border-right:1px solid var(--nd-line)}
+/* 纸面：外壳、顶栏、侧栏 ───────────────────────────────── */
+.nd-panel{background:var(--nd-desk);border:1px solid var(--nd-line);border-radius:14px;box-shadow:0 24px 60px rgba(64,50,38,.16),0 2px 6px rgba(64,50,38,.08)}
+.nd-top{background:var(--nd-top);border-bottom:1px solid #171b21;color:var(--nd-top-text)}
+.nd-brand{font-family:var(--nd-font-serif);font-size:15px;font-weight:600;letter-spacing:.12em;color:var(--nd-top-text)}
+.nd-brand strong{font-size:15px;letter-spacing:.12em;color:inherit}
+.nd-brand-icon{color:#dfc7a4}
+.nd-proj-label{font-size:12px;color:var(--nd-top-sub)}
+.nd-page-name{font-size:12px;letter-spacing:.10em;color:var(--nd-top-sub)}
+.nd-top-meta{font-size:11px;color:var(--nd-top-sub);font-variant-numeric:tabular-nums}
+.nd-top .nd-input,.nd-top .nd-select{background:rgba(237,239,242,.06);border-color:var(--nd-top-line);color:var(--nd-top-text);border-radius:var(--nd-r-sm)}
+.nd-top .nd-select:focus{outline:none;border-color:var(--nd-brand);box-shadow:0 0 0 3px rgba(168,64,44,.30)}
+.nd-top .nd-select option{background:#fff;color:var(--nd-ink)}
+.nd-top .nd-btn{background:transparent;border-color:var(--nd-top-line);color:#d9dee5;border-radius:var(--nd-r-btn)}
+.nd-top .nd-btn:hover:not(:disabled){background:rgba(237,239,242,.10);border-color:#4a5361;color:#fff;box-shadow:none}
+.nd-top .nd-iconbtn,.nd-top .nd-top-close{color:var(--nd-top-sub)}
+.nd-top .nd-iconbtn:hover,.nd-top .nd-top-close:hover{background:rgba(237,239,242,.12);color:var(--nd-top-text)}
+.nd-nav,.nd-toc,.nd-side,.nd-read-head{background:var(--nd-panel);border-color:var(--nd-line)}
 .nd-nav-group{font-size:10.5px;letter-spacing:.16em;color:var(--nd-ink-4)}
-.nd-nav-item{color:var(--nd-ink-2);border-radius:7px}
+.nd-nav-item{color:var(--nd-ink-2);border-radius:var(--nd-r-btn)}
 .nd-nav-item:hover{background:var(--nd-hover);color:var(--nd-ink)}
-.nd-nav-item.nd-nav-active{background:#fffdf8;color:var(--nd-brand-strong);font-weight:600;box-shadow:inset 3px 0 0 var(--nd-brand),var(--nd-shadow-1)}
+.nd-nav-item.nd-nav-active{background:var(--nd-card);color:var(--nd-brand);font-weight:600;box-shadow:inset 3px 0 0 var(--nd-brand),0 1px 3px rgba(64,50,38,.07)}
 .nd-toc-head,.nd-toc-title{color:var(--nd-ink-2)}
-.nd-toc-item{color:var(--nd-ink-2);border-radius:6px}
+.nd-toc-item{color:var(--nd-ink-2);border-radius:var(--nd-r-btn)}
 .nd-toc-item:hover{background:var(--nd-hover)}
-.nd-toc-item.nd-toc-active{background:#fffdf8;color:var(--nd-brand-strong);box-shadow:inset 2px 0 0 var(--nd-brand)}
+.nd-toc-item.nd-toc-active{background:var(--nd-card);color:var(--nd-brand);box-shadow:inset 2px 0 0 var(--nd-brand)}
 .nd-toc-no{color:var(--nd-ink-4);font-variant-numeric:tabular-nums}
 .nd-toc-foot,.nd-toc-sub{color:var(--nd-ink-4);font-size:11px}
 .nd-side-title,.nd-side-titleline{font-family:var(--nd-font-serif);letter-spacing:.03em;color:var(--nd-ink)}
 .nd-side-sub,.nd-hint,.nd-muted{color:var(--nd-ink-3)}
-.nd-side-sec{border-color:var(--nd-line-2)}
+.nd-side-sec,.nd-toc-head,.nd-toc-foot,.nd-read-head{border-color:var(--nd-line-2)}
 .nd-main,.nd-body{background:transparent}
-.nd-page-head h1,.nd-page-head h2,.nd-page-head h3,.nd-card-head h3,.nd-run-title,.nd-modal-title,.nd-edit-title,.nd-outline-title,.nd-loc-name,.nd-map-detail-head{font-family:var(--nd-font-serif);letter-spacing:.04em;color:var(--nd-ink)}
+.nd-page-head h1,.nd-page-head h2,.nd-page-head h3,.nd-card-head h3,.nd-run-title,.nd-modal-title,.nd-edit-title,.nd-outline-title,.nd-loc-name,.nd-map-detail-head{font-family:var(--nd-font-serif);letter-spacing:.05em;color:var(--nd-ink)}
+.nd-page-head h1{font-size:20px}
+.nd-page-head h2{font-size:18px}
+.nd-card-head h3{font-size:13px}
 .nd-page-actions .nd-btn{font-size:12px}
 
-/* 控件：按钮、输入、标签、分段 ───────────────────────────── */
-.nd-btn{background:#fffdf8;border-color:var(--nd-line);color:var(--nd-ink-2);border-radius:7px;transition:background .14s,border-color .14s,color .14s,box-shadow .14s}
-.nd-btn:hover:not(:disabled){border-color:var(--nd-brand);color:var(--nd-ink);background:#fff;box-shadow:var(--nd-shadow-1)}
+/* 控件：按钮、输入、标签、分段 ──────────────────────────── */
+.nd-btn{background:var(--nd-card);border-color:var(--nd-line);color:var(--nd-ink-2);border-radius:var(--nd-r-btn);transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
+.nd-btn:hover:not(:disabled){border-color:#d5cfc2;color:var(--nd-ink);background:#fff;box-shadow:0 1px 2px rgba(64,50,38,.04)}
 .nd-btn:disabled{opacity:.5}
-.nd-btn-primary{background:var(--nd-brand);border-color:var(--nd-brand);color:#fdfbf6;box-shadow:0 1px 2px rgba(47,74,89,.22)}
+.nd-btn-primary{background:var(--nd-brand);border-color:var(--nd-brand);color:#fff8f4;box-shadow:0 1px 2px rgba(140,53,36,.24)}
 .nd-btn-primary:hover:not(:disabled){background:var(--nd-brand-strong);border-color:var(--nd-brand-strong);color:#fff}
-.nd-btn-danger{color:var(--nd-error);border-color:rgba(168,60,46,.42);background:#fffdf8}
+.nd-btn-danger{color:var(--nd-error);border-color:rgba(178,58,72,.40);background:var(--nd-card)}
 .nd-btn-danger:hover:not(:disabled){border-color:var(--nd-error);background:var(--nd-error-weak);color:var(--nd-error-strong)}
-.nd-input,.nd-textarea,.nd-search-input{background:#fffdf9;border-color:var(--nd-line);color:var(--nd-ink);border-radius:7px}
+.nd-input,.nd-textarea,.nd-search-input{background:var(--nd-card);border-color:var(--nd-line);color:var(--nd-ink);border-radius:var(--nd-r-sm)}
 .nd-input::placeholder,.nd-textarea::placeholder,.nd-search-input::placeholder{color:var(--nd-ink-4)}
-.nd-input:focus,.nd-textarea:focus,.nd-search-input:focus{outline:none;border-color:var(--nd-brand);box-shadow:0 0 0 3px var(--nd-brand-weak)}
+.nd-input:focus,.nd-textarea:focus,.nd-search-input:focus{outline:none;border-color:var(--nd-brand);box-shadow:0 0 0 3px rgba(168,64,44,.14)}
 .nd-check{accent-color:var(--nd-brand)}
 .nd-label{color:var(--nd-ink-2)}
 .nd-btn:focus-visible,.nd-tab:focus-visible,.nd-iconbtn:focus-visible,.nd-linkbtn:focus-visible,.nd-nav-item:focus-visible,.nd-toc-item:focus-visible,.nd-proposal-head:focus-visible,.nd-seg-item:focus-visible,.nd-search-input:focus-visible{outline:2px solid var(--nd-brand);outline-offset:2px}
-.nd-tabs{background:var(--nd-desk-2);border:1px solid var(--nd-line);border-radius:9px}
+.nd-linkbtn{color:var(--nd-brand)}
+.nd-tabs{background:var(--nd-desk-2);border:1px solid var(--nd-line);border-radius:var(--nd-r)}
 .nd-tab{color:var(--nd-ink-3);border-radius:6px}
-.nd-tab.nd-tab-active{background:#fffdf9;color:var(--nd-brand-strong);box-shadow:var(--nd-shadow-1)}
+.nd-tab.nd-tab-active{background:var(--nd-card);color:var(--nd-brand);box-shadow:0 1px 3px rgba(64,50,38,.10)}
 .nd-tab-badge{background:var(--nd-brand-weak);color:var(--nd-brand-strong)}
-.nd-seg{background:#fffdf9;border-color:var(--nd-line);border-radius:7px}
+.nd-seg{background:var(--nd-desk-2);border-color:var(--nd-line);border-radius:var(--nd-r)}
 .nd-seg-item{color:var(--nd-ink-3)}
-.nd-seg-item.nd-seg-active{background:var(--nd-brand);color:#fdfbf6}
-.nd-tag{border-radius:999px;background:var(--nd-desk-3);color:var(--nd-ink-2);letter-spacing:.02em}
-.nd-tag-brand{background:var(--nd-brand-weak);color:var(--nd-brand-strong)}
-.nd-tag-ok{background:var(--nd-ok-weak);color:var(--nd-ok-strong)}
+.nd-seg-item.nd-seg-active{background:var(--nd-brand);color:#fff8f4}
+.nd-tag{border-radius:var(--nd-r-pill);background:var(--nd-desk-3);color:var(--nd-ink-3);letter-spacing:.02em}
+.nd-tag-brand{background:var(--nd-brand-weak);color:var(--nd-brand)}
+.nd-tag-ok{background:var(--nd-ok-weak);color:var(--nd-ok)}
 .nd-tag-warn{background:var(--nd-warn-weak);color:var(--nd-warn-strong)}
-.nd-tag-error{background:var(--nd-error-weak);color:var(--nd-error-strong)}
+.nd-tag-error{background:var(--nd-error-weak);color:var(--nd-error)}
 .nd-tag-muted{background:var(--nd-desk-3);color:var(--nd-ink-3)}
 .nd-dot-brand{background:var(--nd-brand)}
 .nd-dot-ok{background:var(--nd-ok)}
@@ -8501,58 +8620,61 @@ const CSS_EXTRA = `
 .nd-bar-ok{background:var(--nd-ok)}
 .nd-bar-warn{background:var(--nd-warn)}
 .nd-bar-error{background:var(--nd-error)}
-.nd-msg{border-radius:8px}
-.nd-msg-info{background:var(--nd-brand-weak);color:var(--nd-brand-strong)}
-.nd-msg-ok{background:var(--nd-ok-weak);color:var(--nd-ok-strong)}
-.nd-msg-error{background:var(--nd-error-weak);color:var(--nd-error-strong)}
+.nd-msg{border-radius:var(--nd-r)}
+.nd-msg-info{background:var(--nd-info-weak);color:var(--nd-info)}
+.nd-msg-ok{background:var(--nd-ok-weak);color:var(--nd-ok)}
+.nd-msg-error{background:var(--nd-error-weak);color:var(--nd-error)}
 .nd-banner{background:var(--nd-desk-2);border-color:var(--nd-line)}
-.nd-banner-warn{background:var(--nd-warn-weak);color:var(--nd-warn-strong);border-color:rgba(154,111,28,.24)}
-.nd-hl{background:rgba(214,168,42,.32)}
-.nd-score-ok{color:var(--nd-ok-strong)}
+.nd-banner-warn{background:var(--nd-warn-weak);color:var(--nd-warn-strong);border-color:rgba(184,134,11,.22)}
+.nd-hl{background:rgba(214,168,42,.30)}
+.nd-score-ok{color:var(--nd-ok)}
 .nd-score-warn{color:var(--nd-warn-strong)}
-.nd-result-ok{color:var(--nd-ok-strong)}
-.nd-result-bad{color:var(--nd-error-strong)}
-.nd-errorline,.nd-errorbox{background:var(--nd-error-weak);color:var(--nd-error-strong);border-color:rgba(168,60,46,.24)}
-.nd-errorbox{border-radius:10px}
-.nd-empty{border-color:var(--nd-line);color:var(--nd-ink-3);background:rgba(255,253,249,.6)}
+.nd-result-ok{color:var(--nd-ok)}
+.nd-result-bad{color:var(--nd-error)}
+.nd-errorline,.nd-errorbox{background:var(--nd-error-weak);color:var(--nd-error-strong);border-color:rgba(178,58,72,.22)}
+.nd-errorbox{border-radius:var(--nd-r)}
+.nd-empty{border-color:var(--nd-line);color:var(--nd-ink-4);background:transparent;border-radius:var(--nd-r);font-size:12px;padding:34px 16px}
 .nd-spinner{border-color:var(--nd-line);border-top-color:var(--nd-brand)}
-.nd-storage-warn{background:var(--nd-warn-weak);color:var(--nd-warn-strong);border-bottom-color:rgba(154,111,28,.24)}
+.nd-storage-warn{background:var(--nd-warn-weak);color:var(--nd-warn-strong);border-bottom-color:rgba(184,134,11,.22)}
 
-/* 卡片、表格、指标 ─────────────────────────────────────── */
-.nd-card,.nd-outline-row,.nd-loc-card,.nd-review-row,.nd-opinion,.nd-role,.nd-att-point,.nd-todo-item,.nd-stages,.nd-run-grid,.nd-quote{background:#fffdf9;border-color:var(--nd-line);box-shadow:var(--nd-shadow-1)}
-.nd-card,.nd-outline-row,.nd-opinion,.nd-review-row{border-radius:10px}
-.nd-stat{background:var(--nd-desk-2);border-color:var(--nd-line);border-radius:10px}
+/* 卡片、表格、指标 ────────────────────────────────────── */
+.nd-card,.nd-outline-row,.nd-loc-card,.nd-review-row,.nd-opinion,.nd-role,.nd-att-point,.nd-todo-item,.nd-stages,.nd-run-grid,.nd-quote{background:var(--nd-card);border-color:var(--nd-line);box-shadow:var(--nd-shadow-1)}
+.nd-card,.nd-outline-row,.nd-opinion,.nd-review-row,.nd-loc-card,.nd-table-wrap,.nd-stat{border-radius:var(--nd-r)}
+.nd-stat{background:var(--nd-desk-2);border-color:var(--nd-line);box-shadow:none}
 .nd-stat-label,.nd-stat-hint{color:var(--nd-ink-3)}
-.nd-stat-value{font-family:var(--nd-font-serif);font-variant-numeric:tabular-nums}
+.nd-stat-value{font-family:var(--nd-font-serif);font-size:22px;font-variant-numeric:tabular-nums}
 .nd-kv-k,.nd-kv-row+.nd-kv-row{border-color:var(--nd-line-2)}
 .nd-kv-k{color:var(--nd-ink-3)}
 .nd-kv-v{color:var(--nd-ink)}
-.nd-table-wrap{border-color:var(--nd-line);border-radius:10px;background:#fffdf9}
+.nd-table-wrap{border-color:var(--nd-line);background:var(--nd-card)}
 .nd-table th{background:var(--nd-desk-2);color:var(--nd-ink-3);font-size:11px;letter-spacing:.08em;font-weight:600;border-bottom-color:var(--nd-line)}
 .nd-table td{border-bottom-color:var(--nd-line-2);color:var(--nd-ink-2);font-variant-numeric:tabular-nums}
-.nd-table tbody tr:hover td{background:rgba(94,74,42,.045)}
+.nd-table tbody tr:hover td{background:rgba(64,50,38,.035)}
 .nd-quote{border-left:3px solid var(--nd-brand);color:var(--nd-ink-2)}
 .nd-weak-list,.nd-ledger-note{color:var(--nd-ink-3)}
-.nd-welcome{background:linear-gradient(120deg,var(--nd-gold-weak),rgba(251,248,241,0) 58%,var(--nd-brand-weak))}
+.nd-welcome{background:linear-gradient(120deg,var(--nd-warn-weak),rgba(251,250,246,0) 58%,var(--nd-brand-weak))}
 
-/* 注意力原则：本工作台的招牌，用赭金而不是撞色 ─────────── */
-.nd-principle-bar{background:linear-gradient(90deg,rgba(179,132,43,.16),rgba(179,132,43,.04) 62%,rgba(179,132,43,0));border-bottom:1px solid rgba(154,111,28,.22);color:var(--nd-warn-strong)}
-.nd-principle-slogan{font-family:var(--nd-font-serif);letter-spacing:.10em;font-weight:600;color:#8a6316}
+/* 注意力原则：本工作台的招牌，用琥珀而不是撞色 ────────── */
+.nd-principle-bar{background:linear-gradient(90deg,var(--nd-warn-weak),rgba(247,239,220,.35) 62%,rgba(247,239,220,0));border-bottom:1px solid rgba(184,134,11,.18);color:var(--nd-warn-strong)}
+.nd-principle-slogan{font-family:var(--nd-font-serif);letter-spacing:.10em;font-weight:600;color:var(--nd-warn-strong)}
 .nd-principle-text{color:var(--nd-ink-2)}
-.nd-hero{background:linear-gradient(120deg,var(--nd-gold-weak),rgba(251,248,241,0) 55%,var(--nd-brand-weak));border-color:rgba(154,111,28,.22);border-radius:12px}
-.nd-hero-slogan{font-family:var(--nd-font-serif);color:#8a6316;letter-spacing:.06em}
+.nd-hero{background:linear-gradient(120deg,var(--nd-warn-weak),rgba(251,250,246,0) 55%,var(--nd-brand-weak));border-color:rgba(184,134,11,.20);border-radius:var(--nd-r-lg)}
+.nd-hero-slogan{font-family:var(--nd-font-serif);color:var(--nd-warn-strong);letter-spacing:.06em}
 .nd-hero-stat span{color:var(--nd-ink-3)}
 .nd-hero-stat strong{font-family:var(--nd-font-serif);font-variant-numeric:tabular-nums}
 .nd-att-label,.nd-att-empty{color:var(--nd-ink-3)}
 .nd-att-score{color:var(--nd-warn-strong);font-variant-numeric:tabular-nums}
-.nd-route-hot,.nd-route-count{color:var(--nd-warn-strong)}
+.nd-route-hot,.nd-route-count{color:var(--nd-ink-3)}
+.nd-route-hot{color:var(--nd-error);font-weight:600}
 
-/* 正文：中文书的排法 ───────────────────────────────────── */
-.nd-reader-body{font-family:var(--nd-font-serif);letter-spacing:.012em;color:var(--nd-paper-ink,#3b352a)}
+/* 正文：中文书的排法 ──────────────────────────────────── */
+.nd-reader-scroll{--nd-paper:var(--nd-sheet);--nd-paper-ink:var(--nd-ink);--nd-paper-muted:var(--nd-ink-3);--nd-paper-line:rgba(122,105,80,.16)}
+.nd-reader-body{font-family:var(--nd-font-serif);letter-spacing:.012em;color:var(--nd-paper-ink,#23262b)}
 .nd-reader-body .nd-para{text-align:justify;text-justify:inter-ideograph;text-indent:2em;margin:0 0 .8em}
-.nd-reader-body .nd-ch-title{font-family:var(--nd-font-serif);letter-spacing:.08em}
-.nd-reader-body .nd-ch-title-text,.nd-ch-title-text{letter-spacing:.06em}
+.nd-reader-body .nd-ch-title{font-family:var(--nd-font-serif);font-size:18px;line-height:1.55;letter-spacing:.10em}
+.nd-reader-body .nd-ch-title-text,.nd-ch-title-text{letter-spacing:.08em}
 .nd-reader-body .nd-chapter-head{border-bottom-color:var(--nd-paper-line)}
+.nd-ch-words,.nd-ch-num{color:var(--nd-ink-4)}
 .nd-edit-title,.nd-edit-words,.nd-edit-state{font-variant-numeric:tabular-nums}
 .nd-edit-title{font-family:var(--nd-font-serif);letter-spacing:.05em}
 
@@ -8564,39 +8686,51 @@ const CSS_EXTRA = `
   .nd-editor-wrap .nd-editor,.nd-editor-marks{padding:14px 8px 30px}
   .nd-immersive .nd-editor,.nd-immersive .nd-editor-marks{padding:16px 14px 70px}
 }
-.nd-edit-mark-logic,.nd-mark-logic{box-shadow:inset 3px 0 0 rgba(168,60,46,.75)}
-.nd-edit-mark-deai,.nd-mark-deai{box-shadow:inset 3px 0 0 rgba(154,111,28,.8)}
+.nd-editor{background:var(--nd-card);border-color:var(--nd-line);color:var(--nd-ink)}
+.nd-edit-mark-logic,.nd-mark-logic{box-shadow:inset 3px 0 0 rgba(168,64,44,.72)}
+.nd-edit-mark-deai,.nd-mark-deai{box-shadow:inset 3px 0 0 rgba(184,134,11,.75)}
 
-/* 弹层 ─────────────────────────────────────────────────── */
-.nd-mask{background:rgba(31,27,20,.36)}
-.nd-modal{background:var(--nd-desk);border:1px solid var(--nd-line);border-radius:12px;box-shadow:0 40px 90px rgba(28,23,15,.34)}
+/* 弹层 ────────────────────────────────────────────────── */
+.nd-mask{background:rgba(32,28,22,.34)}
+.nd-modal{background:var(--nd-card);border:1px solid var(--nd-line);border-radius:var(--nd-r-lg);box-shadow:var(--nd-shadow-2)}
 .nd-modal-head{border-bottom-color:var(--nd-line)}
 .nd-modal-foot{border-top-color:var(--nd-line)}
-.nd-note-pop{background:var(--nd-desk);border:1px solid var(--nd-line);box-shadow:var(--nd-shadow-2)}
-.nd-note-quote{border-left-color:var(--nd-gold);color:var(--nd-ink-2)}
+.nd-note-pop{background:var(--nd-card);border:1px solid var(--nd-line);border-radius:var(--nd-r-lg);box-shadow:var(--nd-shadow-2)}
+.nd-note-quote{border-left-color:var(--nd-warn);color:var(--nd-ink-2)}
+.nd-results{background:var(--nd-card);border-color:var(--nd-line);border-radius:var(--nd-r-lg);box-shadow:var(--nd-shadow-2)}
 
-/* 提案与 diff：改稿说明要像校样，不像 JSON ─────────────── */
-.nd-proposal{background:#fffdf9;border-color:var(--nd-line);box-shadow:var(--nd-shadow-1)}
-.nd-proposal.nd-proposal-open{border-color:var(--nd-brand);box-shadow:0 0 0 3px var(--nd-brand-weak),var(--nd-shadow-1)}
+/* 提案与 diff：改稿说明要像校样，不像 JSON ────────────── */
+.nd-proposal{background:var(--nd-card);border-color:var(--nd-line);border-radius:var(--nd-r);box-shadow:0 1px 2px rgba(64,50,38,.05)}
+.nd-proposal.nd-proposal-open{border-color:rgba(168,64,44,.42);box-shadow:0 0 0 3px rgba(168,64,44,.10),var(--nd-shadow-1)}
 .nd-proposal-title{font-family:var(--nd-font-serif);letter-spacing:.02em;color:var(--nd-ink)}
 .nd-proposal-summary,.nd-proposal-digest,.nd-proposal-when{color:var(--nd-ink-3)}
-.nd-patch{background:#fffdf9;border-color:var(--nd-line-2)}
+.nd-patch{background:var(--nd-card);border-color:var(--nd-line-2);border-radius:var(--nd-r-btn)}
 .nd-patch-read,.nd-patch-edit,.nd-fix{background:var(--nd-desk-2);border-color:var(--nd-line-2)}
+.nd-patch-ch,.nd-src-chip,.nd-fix-name{border-radius:var(--nd-r-xs)}
 .nd-inline-diff{font-family:var(--nd-font-serif);letter-spacing:.01em}
-.nd-inline-del{color:var(--nd-error-strong);background:var(--nd-error-weak)}
-.nd-inline-ins{color:var(--nd-ok-strong);background:var(--nd-ok-weak)}
-.nd-size-ins{color:var(--nd-ok-strong)}
-.nd-size-del{color:var(--nd-error-strong)}
-.nd-pre{background:var(--nd-desk-2);border:1px solid var(--nd-line-2);color:var(--nd-ink-2);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.nd-inline-del{color:#98414d;background:#f9e7ea}
+.nd-inline-ins{color:#2a6e2e;background:#e9f3e9}
+.nd-size-ins{color:var(--nd-ok)}
+.nd-size-del{color:var(--nd-error)}
+.nd-pre{background:var(--nd-desk-2);border:1px solid var(--nd-line-2);color:var(--nd-ink-2);font-family:var(--nd-font-mono)}
 .nd-gate-row{color:var(--nd-ink-2)}
 .nd-fix-k{color:var(--nd-ink-3)}
 
-/* 滚动条与选中：暖、细，不抢正文 ───────────────────────── */
-.nd-overlay *{scrollbar-width:thin;scrollbar-color:rgba(122,104,78,.32) transparent}
+/* 滚动条与选中：暖、细，不抢正文 ──────────────────────── */
+.nd-overlay *{scrollbar-width:thin;scrollbar-color:rgba(64,50,38,.26) transparent}
 .nd-overlay *::-webkit-scrollbar{width:10px;height:10px}
-.nd-overlay *::-webkit-scrollbar-thumb{background:rgba(122,104,78,.26);border:3px solid transparent;border-radius:999px;background-clip:content-box}
-.nd-overlay *::-webkit-scrollbar-thumb:hover{background:rgba(122,104,78,.44);background-clip:content-box}
+.nd-overlay *::-webkit-scrollbar-thumb{background:rgba(64,50,38,.22);border:3px solid transparent;border-radius:999px;background-clip:content-box}
+.nd-overlay *::-webkit-scrollbar-thumb:hover{background:rgba(64,50,38,.38);background-clip:content-box}
 .nd-overlay *::-webkit-scrollbar-track{background:transparent}
+/* 图标：线条、随字色，与文字同排 ─────────────────────── */
+.nd-icon{flex:none;display:inline-block;vertical-align:-0.14em}
+.nd-with-icon{display:inline-flex;align-items:center;gap:5px;vertical-align:-2px}
+.nd-nav-icon .nd-icon,.nd-entry-icon .nd-icon,.nd-brand-icon .nd-icon{vertical-align:0}
+.nd-welcome-icon .nd-icon{stroke-width:1.6}
+.nd-tab .nd-with-icon,.nd-nav-item .nd-with-icon,.nd-route-label .nd-with-icon{gap:4px}
+.nd-btn .nd-with-icon{gap:5px}
+.nd-iconbtn .nd-icon{vertical-align:0}
+
 `
     // ── 注册 ──────────────────────────────────────────────────
     return {

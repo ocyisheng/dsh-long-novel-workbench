@@ -201,19 +201,30 @@ test('章节删除：目录与正文页都有入口', () => {
 })
 
 test('导入：与导出并列，接受目录或单文件', () => {
-  assert.ok(source.includes('📥 导入旧稿'), '设置页导入卡存在')
+  assert.ok(source.includes("withIcon('download', ' 导入旧稿', 14)"), '设置页导入卡存在')
   assert.ok(source.includes('不要求 0001.md'), '导入文案要说明不挑命名')
-  assert.ok(source.includes("'⬆ 导入'"), '顶栏要有导入入口')
+  assert.ok(source.includes("withIcon('arrow-up', ' 导入')"), '顶栏要有导入入口')
   // 导入卡必须在导出卡之后、数据位置之前
-  const exportIdx = source.indexOf('📤 导出正文')
-  const importIdx = source.indexOf('📥 导入旧稿')
-  const dataIdx = source.indexOf('📁 数据位置')
+  const exportIdx = source.indexOf("withIcon('upload', ' 导出正文', 14)")
+  const importIdx = source.indexOf("withIcon('download', ' 导入旧稿', 14)")
+  const dataIdx = source.indexOf('数据位置（只读）')
   assert.ok(exportIdx > 0 && importIdx > exportIdx, '导入应在导出之后')
   assert.ok(dataIdx > importIdx, '导入不应再沉到数据位置之后')
 })
 
 test('纯文本渲染，无危险注入', () => {
-  assert.equal(/dangerouslySetInnerHTML/.test(source), false)
+  // 正文/审阅一律走文本节点。唯一允许的 innerHTML 是内联图标常量：
+  // 内容来自 ICON_SVG 这张编译期固定表，用户数据永远不进这里。
+  const hits = source.match(/dangerouslySetInnerHTML/g) || []
+  assert.equal(hits.length, 1, 'dangerouslySetInnerHTML 只允许出现在 Icon 组件里')
+  const iconStart = source.indexOf('function Icon(')
+  const iconEnd = source.indexOf('function withIcon(')
+  assert.ok(iconStart > 0 && iconEnd > iconStart, 'Icon 组件缺失')
+  assert.ok(
+    source.slice(iconStart, iconEnd).includes('dangerouslySetInnerHTML'),
+    'innerHTML 必须落在 Icon 组件内部',
+  )
+  assert.equal(/ICON_SVG\[[^\]]*\]\s*\|\|\s*''/.test(source), false, '图标缺失要直接返回 null，不能拼字符串')
   assert.equal(/\.innerHTML\s*=/.test(source), false)
   assert.equal(/document\.write/.test(source), false)
   assert.equal(/\beval\(/.test(source), false)
