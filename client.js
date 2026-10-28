@@ -8551,7 +8551,7 @@ const CSS_EXTRA = `
   --nd-chart-4:#2e7d32; --nd-chart-5:#58708a;
   /* 字体 */
   --nd-font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
-  --nd-font-serif:"Songti SC","Noto Serif SC","Source Han Serif SC","Source Han Serif CN",ui-serif,Georgia,Cambria,"Times New Roman",serif;
+  --nd-font-serif:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif;
   --nd-font-mono:"Source Code Pro",ui-monospace,SFMono-Regular,Menlo,monospace;
   /* 圆角分级 */
   --nd-r-xs:6px;
@@ -8866,7 +8866,7 @@ const CSS_EXTRA = `
   color:var(--nd-ink);
 }
 .nd-modal-title{font-size:14px;font-weight:600}
-.nd-ch-title,.nd-ch-title-text{font-family:var(--nd-font-serif);font-size:18px;letter-spacing:.06em}
+.nd-ch-title,.nd-ch-title-text{font-family:var(--nd-font-serif);font-size:18px;letter-spacing:.02em}
 .nd-ch-words,.nd-ch-num,.nd-read-pos{font-size:10.5px;color:var(--nd-ink-4);font-variant-numeric:tabular-nums}
 
 /* ── 十三、正文：中文书的排法 ──────────────────────────── */
@@ -8876,7 +8876,7 @@ const CSS_EXTRA = `
   --nd-paper-muted:var(--nd-ink-3);
   --nd-paper-line:rgba(122,98,60,.16);
 }
-.nd-reader-body{font-family:var(--nd-font-serif);letter-spacing:.012em;color:var(--nd-paper-ink)}
+.nd-reader-body{font-family:var(--nd-font-serif);letter-spacing:0;color:var(--nd-paper-ink)}
 .nd-reader-body .nd-para,
 .nd-reader-body .nd-seg-text{padding:5px 6px;margin:2px -6px;border-radius:5px;transition:background .15s}
 .nd-reader-body .nd-para{text-align:justify;text-justify:inter-ideograph;text-indent:2em}
@@ -8885,7 +8885,7 @@ const CSS_EXTRA = `
 .nd-reader-body ::selection{background:rgb(59 130 246 / 20%)}
 .nd-overlay ::selection{background:rgb(59 130 246 / 20%)}
 .nd-edit-title,.nd-edit-words,.nd-edit-state{font-variant-numeric:tabular-nums}
-.nd-edit-title{font-family:var(--nd-font-serif);letter-spacing:.05em}
+.nd-edit-title{font-family:var(--nd-font-serif);letter-spacing:.02em}
 
 /* 编辑器：正文层与标记层必须同字体同内边距，否则高亮错位 */
 .nd-editor-wrap .nd-editor,.nd-editor-marks{font-family:var(--nd-font-serif);letter-spacing:normal}
