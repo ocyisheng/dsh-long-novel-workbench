@@ -95,7 +95,9 @@ test('DSH Remote / 手机不被工作台覆盖：只有显式链接才自动展�
   assert.ok(overlayTail.includes('if (IS_STANDALONE_TAB) setOpen(true)'), '显式链接在桌面和手机都自动铺开')
   assert.ok(source.includes('nd-mobile-close'), '手机要有兜底关闭按钮')
   assert.ok(source.includes('@media (max-width: 900px)'), '要有窄屏响应式样式')
-  assert.ok(source.includes("style.textContent = CSS + CSS_EXTRA + PAPER_CSS + MAP_CSS + MOBILE_CSS"), '手机样式要拼接进页面')
+  assert.ok(source.includes("style.textContent = CSS + CSS_EXTRA + PAPER_CSS + MAP_CSS + THEME_CSS + MOBILE_CSS"), '手机样式与主题层要拼接进页面')
+  assert.ok(source.includes('const THEME_CSS = `'), '主题层单独成层，便于整体换色而不动布局')
+  assert.ok(/\.nd-editor-wrap \.nd-editor,\.nd-editor-marks\{padding:14px 34px 30px\}/.test(source), '编辑器正文层与标记层必须同内边距，否则高亮错位')
 })
 
 test('沉浸模式：只留阅读 / 编辑 / 审阅 + 退出，正文接近全屏', () => {

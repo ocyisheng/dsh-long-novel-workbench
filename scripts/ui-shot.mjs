@@ -54,7 +54,41 @@ async function main() {
   await cp(join(src, 'projects', projectId, 'chapters'), join(root, 'projects', projectId, 'chapters'), { recursive: true }).catch(() => {})
 
   const tocRes = await call('chapter.list', { projectId })
-  const chapterRows = Array.isArray(tocRes) ? tocRes : (tocRes.chapters ?? [])
+  let chapterRows = Array.isArray(tocRes) ? tocRes : (tocRes.chapters ?? [])
+  // 真实库里有的作品一章都没有（只有 novel.db + chapters/）：为了能看阅读页排版，
+  // 在临时副本里补三章样例正文，绝不写回真实 StoryDesk。
+  if (!chapterRows.length) {
+    const samples = [
+      ['夜行', [
+        '夜色压在瓦上，像有人把整座城浸进了墨里。沈砚提着灯，从衙门的后巷绕出去，风灌进来，火苗贴着灯罩抖了抖，没有灭。',
+        '他走了大概半炷香的工夫，才在一扇门前停下。门没锁，只虚掩着，缝里漏出一线极淡的黄光，像是有人在里面数钱。',
+        '「进来吧。」里头有人说话，声音很轻，也很干净，不像是等着他来的样子。',
+      ]],
+      ['灯下', [
+        '灯把夜色推开了三尺。案上摊着一卷旧纸，纸边的虫蛀成了细密的小洞，像一张被啃过的地图。',
+        '裴九用手指压住纸角，说这东西在被塞进柜子之前，已经被翻过一遍了。沈砚问他怎么知道，裴九说，翻过的人手上有油。',
+        '两个人都没有再说话。窗外有人在打更，梆子声一下一下，敲得很稳，稳得像是在替谁数着剩下的日子。',
+      ]],
+      ['旧案', [
+        '他脸上没有夜色的份。所有人都看得出来，这人一夜没睡，可眼睛亮得反常。',
+        '柳氏把茶放在桌角，没有走，也没有坐。她说，你父亲那天出门的时候，也是这样一双眼睛。',
+        '沈砚端起茶，没喝。他忽然想起来，父亲出事那年，也是秋天，也是这么大的风。',
+      ]],
+    ]
+    let no = 1
+    for (const [title, paras] of samples) {
+      await call('chapter.save', {
+        projectId,
+        chapter: no,
+        text: `第${no}章 ${title}\n` + paras.join('\n'),
+        meta: { title },
+        create: true,
+      }).catch((error) => console.log(`! 造第 ${no} 章失败：${error.message}`))
+      no += 1
+    }
+    const again = await call('chapter.list', { projectId })
+    chapterRows = Array.isArray(again) ? again : (again.chapters ?? [])
+  }
   const first = chapterRows.find((row) => Number(row.words) > 0) ?? chapterRows[0]
   const chapterGet = {}
   for (const row of chapterRows.slice(0, 4)) {
@@ -154,22 +188,36 @@ async function main() {
   await ensureReact(site)
 
   const shots = [
-    { name: 'proposals-collapsed', click: -1 },
-    { name: 'proposal-bookfix', click: 0 },
-    { name: 'proposal-bookfix-gates', click: 0, focus: '.nd-gates' },
-    { name: 'proposal-ledger', click: 1 },
+    { name: 'proposals-collapsed', page: 'proposals', click: -1 },
+    { name: 'proposal-bookfix', page: 'proposals', click: 0 },
+    { name: 'proposal-bookfix-gates', page: 'proposals', click: 0, focus: '.nd-gates' },
+    { name: 'proposal-ledger', page: 'proposals', click: 1 },
+    { name: 'read', page: 'read' },
+    { name: 'read-probe', page: 'read', dump: true },
+    { name: 'read-edit', page: 'read', mode: 'edit' },
+    { name: 'problems', page: 'problems' },
+    { name: 'settings', page: 'settings' },
+    { name: 'overview', page: 'overview' },
+    { name: 'ledger', page: 'ledger' },
   ]
   const profile = join(work, 'chrome')
   await mkdir(join(work, 'shots'), { recursive: true })
   for (const shot of shots) {
-    const hash = `#proposals?novel-desk=1&click=${shot.click}${shot.focus ? `&focus=${encodeURIComponent(shot.focus)}` : ''}`
-    await writeFile(join(site, 'index.html'), html(fixtures, projectId), 'utf8')
+    const page = shot.page || 'proposals'
+    const hash = `#${page}?novel-desk=1&click=${shot.click ?? -1}${shot.focus ? `&focus=${encodeURIComponent(shot.focus)}` : ''}`
+    await writeFile(join(site, 'index.html'), html(fixtures, projectId, page, shot.mode || 'read'), 'utf8')
     const file = join(work, 'shots', `${shot.name}.png`)
-    execFileSync(chrome, [
+    const args = [
       '--headless=new', '--disable-gpu', '--no-first-run', `--user-data-dir=${profile}`,
-      '--virtual-time-budget=9000', '--window-size=1680,1000', `--screenshot=${file}`,
-      `file://${join(site, 'index.html')}${hash}`,
-    ], { maxBuffer: 64 * 1024 * 1024, stdio: 'ignore' })
+      '--virtual-time-budget=9000', `--window-size=${shot.size || '1680,1000'}`,
+    ]
+    if (shot.dump) {
+      const dom = execFileSync(chrome, [...args, '--dump-dom', `file://${join(site, 'index.html')}${hash}`], { maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' })
+      const m = /<pre id="debug"[^>]*>([\s\S]*?)<\/pre>/.exec(dom)
+      console.log(`- ${shot.name} (dump) -> ${(m ? m[1] : '(no debug)').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').slice(0, 1600)}`)
+      continue
+    }
+    execFileSync(chrome, [...args, `--screenshot=${file}`, `file://${join(site, 'index.html')}${hash}`], { maxBuffer: 64 * 1024 * 1024, stdio: 'ignore' })
     console.log(`- ${shot.name} -> ${file}`)
   }
 }
@@ -196,7 +244,7 @@ async function ensureReact(dir) {
   }
 }
 
-function html(fixtures, projectId) {
+function html(fixtures, projectId, page = 'proposals', mode = 'read') {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>novel-desk proposal shot</title>
 <style>html,body{margin:0;padding:0;background:#fff;font-family:system-ui,sans-serif}#root{min-height:100vh}#debug{display:none}</style></head>
 <body><div id="root"></div><pre id="debug"></pre>
@@ -222,7 +270,8 @@ window.__ModuleLoader__ = { load({ id, factory }) {
 window.onerror = (msg, src, line, col) => { window.__mockErrors.push('onerror: ' + msg + ' @' + line + ':' + col); };
 window.addEventListener('unhandledrejection', (e) => { window.__mockErrors.push('unhandledrejection: ' + (e.reason && e.reason.message || e.reason)); });
 try { localStorage.setItem('nd.project', ${JSON.stringify(projectId)}); } catch (e) {}
-if (location.hash.length > 1) { try { localStorage.setItem('nd.page', 'proposals'); } catch (e) {} }
+try { localStorage.setItem('nd.page', ${JSON.stringify(page)}); } catch (e) {}
+try { localStorage.setItem('nd.mode', ${JSON.stringify(mode)}); } catch (e) {}
 </script>
 <script src="client.js"></script>
 <script>
@@ -258,6 +307,32 @@ setTimeout(function () {
   const lines = ['mount: ' + status];
   if (window.__mountError) lines.push('mountError: ' + window.__mountError.split('\\n').slice(0, 4).join(' | '));
   if (window.__mockErrors.length) lines.push('errors: ' + window.__mockErrors.slice(0, 8).join(' || '));
+  try {
+    const para = document.querySelector('.nd-reader-body .nd-para');
+    if (para) {
+      const cs = getComputedStyle(para);
+      const pr = para.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(para.firstChild || para);
+      const tr = range.getClientRects()[0] || pr;
+      lines.push('para: font=' + cs.fontFamily.slice(0, 40) + ' size=' + cs.fontSize + ' indent=' + cs.textIndent + ' align=' + cs.textAlign + ' boxX=' + Math.round(pr.left) + ' textX=' + Math.round(tr.left));
+    } else lines.push('para: none');
+    const body = document.querySelector('.nd-reader-body');
+    if (body) {
+      const bc = getComputedStyle(body);
+      lines.push('body: font=' + bc.fontFamily.slice(0, 40) + ' size=' + bc.fontSize + ' lead=' + bc.lineHeight);
+    }
+    const ed = document.querySelector('.nd-editor');
+    const marks = document.querySelector('.nd-editor-marks');
+    if (ed && marks) {
+      const a = getComputedStyle(ed), b = getComputedStyle(marks);
+      lines.push('editor: font=' + a.fontFamily.slice(0, 30) + ' pad=' + a.padding + ' | marks: font=' + b.fontFamily.slice(0, 30) + ' pad=' + b.padding);
+    }
+    const nav = document.querySelector('.nd-nav-item.nd-nav-active');
+    if (nav) lines.push('navActive: color=' + getComputedStyle(nav).color + ' bg=' + getComputedStyle(nav).backgroundColor);
+    const panel = document.querySelector('.nd-panel');
+    if (panel) lines.push('panel: bg=' + getComputedStyle(panel).backgroundColor + ' font=' + getComputedStyle(panel).fontFamily.slice(0, 30));
+  } catch (e) { lines.push('probe error: ' + e.message); }
   document.getElementById('debug').textContent = lines.join('\\n');
 }, 4000);
 </script></body></html>`
