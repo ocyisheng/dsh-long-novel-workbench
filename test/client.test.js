@@ -357,3 +357,19 @@ test('提案页契约：PROPOSAL_KIND 含 book-fix、支持 proposal.update 改�
   assert.match(source, /workorder: 'attentionRecheckWorkorder', chapters, focus:/)
   assert.match(source, /冷读打分工作单（\$\{chapters\.length\} 章）/)
 })
+
+test('提案页读法：补丁走内联 diff、账本走字段中文名，不再把 JSON 铺给作者', () => {
+  assert.match(source, /function diffSegments\(before, after\)/, '缺少字符级 diff')
+  assert.match(source, /function PatchView\(/, '缺少补丁卡片组件')
+  assert.match(source, /function LedgerFixView\(/, '缺少账本修订卡片组件')
+  assert.match(source, /const proposalDigest = useCallback\(/, '缺少卡片摘要行')
+  assert.match(source, /className: 'nd-inline-del'/, '删掉的句子要划红线')
+  assert.match(source, /className: 'nd-inline-ins'/, '新加的句子要标绿')
+  // 账本修订不能再整包字符串化
+  assert.doesNotMatch(source, /ledgerFixSummary\(fix\)\)/, '账本修订不能直接 JSON.stringify 给作者看')
+  // 闸门结论要出现在摘要附近，而不是埋在整页最底下
+  const gatesUse = source.indexOf('h(GatesView, { gates: proposal.gates })')
+  const patchStart = source.indexOf("className: 'nd-proposal-patches'")
+  assert.ok(gatesUse > 0, '提案展开体必须渲染闸门结果')
+  assert.ok(patchStart > 0 && gatesUse < patchStart, '闸门结论要排在改动清单前面')
+})

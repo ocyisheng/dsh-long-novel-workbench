@@ -4549,23 +4549,265 @@ window.__ModuleLoader__.load({
       return out.length ? out.join('；') : '需要修改后重新生成'
     }
 
+    // ── 提案可读化：把提案里的 JSON 数据翻成人能直接读的样子 ──────
+    // 提案存的是结构化数据（补丁 / 账本 patch / 闸门结果），原样铺出去就是一堆 JSON。
+    // 这一段负责把它们翻译成「第几章、删了什么、加了什么、谁提的意见」。
+    const FIX_KIND_LABEL = {
+      world: '世界设定', facts: '事实', characters: '人物', events: '事件', locations: '地点',
+      foreshadow: '伏笔', conflicts: '冲突', highlights: '高光', outlines: '大纲', presets: '预设',
+    }
+    // 字段中文名：先取账本字段表（LEDGER_META 用同一套 key），再补提案里常见的几个
+    const FIX_FIELD_LABEL = (() => {
+      const map = {}
+      for (const meta of Object.values(LEDGER_META)) {
+        for (const field of [...(meta.cols || []), ...(meta.fields || [])]) {
+          if (field && field.k) map[field.k] = field.t
+        }
+      }
+      Object.assign(map, {
+        chapter: '章号', storyTime: '故事内时间', setupChapter: '埋设章', payoffChapter: '回收章',
+        validFrom: '生效章', validTo: '失效章', importance: '重要度', location: '地点',
+        participants: '参与人物', consequences: '后果', relationships: '关系',
+        content: '正文', opinion: '修改意见', prompt: '提示词', before: '原文', after: '改为',
+        kind: '类别', items: '条目',
+      })
+      return map
+    })()
+    const fieldLabel = (key) => FIX_FIELD_LABEL[key] || String(key)
+    // 枚举字段（定位 / 重要度 / 状态…）显示中文，别把 protagonist 直接怼给作者
+    const FIX_OPTION_LABEL = (() => {
+      const map = {}
+      for (const meta of Object.values(LEDGER_META)) {
+        for (const field of meta.fields || []) {
+          if (!field || !field.k || !Array.isArray(field.options)) continue
+          for (const option of field.options) {
+            if (!Array.isArray(option) || option.length < 2) continue
+            map[`${field.k}:${String(option[0])}`] = String(option[1])
+          }
+        }
+      }
+      return map
+    })()
+    const optionText = (key, value) => FIX_OPTION_LABEL[`${key}:${String(value)}`] || String(value)
+    const isPlainValue = (value) => value === null || typeof value !== 'object'
+
+    function valueText(value) {
+      if (value === null || value === undefined) return ''
+      if (typeof value === 'boolean') return value ? '是' : '否'
+      if (typeof value === 'number') return Number.isFinite(value) ? String(value) : ''
+      if (Array.isArray(value)) return value.every(isPlainValue) ? value.map(valueText).filter(Boolean).join('、') : ''
+      // 嵌套对象交给「复杂值」分支显示成「N 项（见原始数据）」，不要漏成 [object Object]
+      if (typeof value === 'object') return ''
+      return String(value)
+    }
+    function clip(text, max = 90) {
+      const flat = String(text ?? '').replace(/\s+/g, ' ').trim()
+      return flat.length > max ? `${flat.slice(0, max)}…` : flat
+    }
+    // 账本修订项的名字：挑一个最能当标题的字段
+    function fixName(fix) {
+      const patch = (fix && fix.patch) || {}
+      return valueText(patch.name || patch.title || patch.subject || patch.id || patch.key || '')
+    }
+    // 账本修订项拆成「字段 → 值」；同样是嵌套结构的留给折叠的原始数据
+    function fixRows(fix) {
+      const patch = (fix && fix.patch) || {}
+      const rows = []
+      const complex = []
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined || value === null || value === '') continue
+        const text = typeof value === 'string' ? optionText(key, value) : valueText(value)
+        if (text) rows.push({ key, label: fieldLabel(key), text })
+        else complex.push({ key, label: fieldLabel(key), value })
+      }
+      return { rows, complex }
+    }
+
+    // 字符级内联 diff：中文逐字对照比两栏 pre 直观，也不必引第三方库。
+    // 先剥掉公共前后缀，中间段做 LCS；太长（>1200 字）就退化成整段「删 / 增」。
+    function diffSegments(before, after) {
+      const a = String(before ?? '')
+      const b = String(after ?? '')
+      const rows = []
+      const push = (type, text) => {
+        if (!text) return
+        const last = rows[rows.length - 1]
+        if (last && last.type === type) last.text += text
+        else rows.push({ type, text })
+      }
+      let head = 0
+      const shortest = Math.min(a.length, b.length)
+      while (head < shortest && a[head] === b[head]) head += 1
+      let endA = a.length
+      let endB = b.length
+      while (endA > head && endB > head && a[endA - 1] === b[endB - 1]) { endA -= 1; endB -= 1 }
+      push('same', a.slice(0, head))
+      const midA = a.slice(head, endA)
+      const midB = b.slice(head, endB)
+      if (midA.length > 1200 || midB.length > 1200) {
+        push('del', midA)
+        push('ins', midB)
+      } else if (midA || midB) {
+        const n = midA.length
+        const m = midB.length
+        const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1))
+        for (let i = n - 1; i >= 0; i -= 1) {
+          for (let j = m - 1; j >= 0; j -= 1) {
+            dp[i][j] = midA[i] === midB[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
+          }
+        }
+        let i = 0
+        let j = 0
+        while (i < n && j < m) {
+          if (midA[i] === midB[j]) { push('same', midA[i]); i += 1; j += 1 }
+          else if (dp[i + 1][j] >= dp[i][j + 1]) { push('del', midA[i]); i += 1 }
+          else { push('ins', midB[j]); j += 1 }
+        }
+        while (i < n) { push('del', midA[i]); i += 1 }
+        while (j < m) { push('ins', midB[j]); j += 1 }
+      }
+      push('same', a.slice(endA))
+      return rows
+    }
+    function diffSize(rows) {
+      return rows.reduce((acc, row) => {
+        if (row.type === 'del') acc.del += row.text.length
+        if (row.type === 'ins') acc.ins += row.text.length
+        return acc
+      }, { del: 0, ins: 0 })
+    }
+
+    // 一条补丁：默认给「合并读法」（删的划线、加的标绿），可切回原始两栏。
+    function PatchView({ patch, index, ordinal, editing, onChange, reviewMap }) {
+      const before = String((patch && patch.before) ?? '')
+      const after = String((patch && patch.after) ?? '')
+      const [raw, setRaw] = useState(false)
+      const rows = useMemo(() => diffSegments(before, after), [before, after])
+      const size = useMemo(() => diffSize(rows), [rows])
+      const reviewIds = Array.isArray(patch && patch.reviewIds) ? patch.reviewIds : []
+      const reviews = reviewIds.map((id) => reviewMap.get(String(id))).filter(Boolean)
+      return h('div', { className: 'nd-patch' },
+        h('div', { className: 'nd-patch-head' },
+          h('span', { className: 'nd-patch-idx' }, `第 ${ordinal || index + 1} 处`),
+          h('span', { className: 'nd-patch-size' },
+            h('span', { className: 'nd-size-ins' }, `＋${size.ins}`),
+            ' / ',
+            h('span', { className: 'nd-size-del' }, `－${size.del}`),
+            ' 字',
+          ),
+          h('button', { type: 'button', className: 'nd-patch-toggle', onClick: () => setRaw((prev) => !prev) },
+            raw ? '看对照读法' : '看原文 / 改为'),
+        ),
+        raw
+          ? h('div', { className: 'nd-diff' },
+              h('div', { className: 'nd-diff-col' },
+                h('div', { className: 'nd-diff-head' }, '原文'),
+                h('pre', { className: 'nd-pre' }, before || '—'),
+              ),
+              h('div', { className: 'nd-diff-col' },
+                h('div', { className: 'nd-diff-head' }, '改为'),
+                editing
+                  ? h(TextArea, { value: after, rows: 4, onChange })
+                  : h('pre', { className: 'nd-pre' }, after || '（留空 = 删除这一段）'),
+              ),
+            )
+          : h('div', { className: 'nd-patch-read' },
+              before || after
+                ? h('p', { className: 'nd-inline-diff' }, rows.map((row, i) => (
+                    row.type === 'same'
+                      ? h('span', { key: i }, row.text)
+                      : row.type === 'del'
+                        ? h('del', { key: i, className: 'nd-inline-del', title: '原来这一句会被删掉' }, row.text)
+                        : h('ins', { key: i, className: 'nd-inline-ins', title: '新加的这一句' }, row.text)
+                  )))
+                : h('p', { className: 'nd-hint' }, '这一处没有正文改动。'),
+            ),
+        editing && !raw
+          ? h('label', { className: 'nd-patch-edit' },
+              h('span', { className: 'nd-diff-head' }, '改为（可直接改，保存后重新过闸门）'),
+              h(TextArea, { value: after, rows: 4, onChange }),
+            )
+          : null,
+        patch && patch.why ? h('p', { className: 'nd-patch-why' }, `理由：${String(patch.why)}`) : null,
+        reviews.length
+          ? h('div', { className: 'nd-patch-src' },
+              h('span', { className: 'nd-hint' }, '来源意见'),
+              reviews.map((review) => h('span', {
+                key: review.id,
+                className: 'nd-src-chip',
+                title: [review.issue, review.suggestion].filter(Boolean).join('\n'),
+              }, `「${clip(review.quote || review.issue || '', 24)}」`)),
+            )
+          : null,
+      )
+    }
+
+    // 账本修订项：人类可读的「字段：值」列表，原始数据折起来。
+    function LedgerFixView({ fix }) {
+      const kind = String((fix && fix.kind) || '')
+      const name = fixName(fix)
+      const { rows, complex } = fixRows(fix)
+      const raw = JSON.stringify((fix && fix.patch) || {}, null, 2)
+      return h('div', { className: 'nd-fix' },
+        h('div', { className: 'nd-fix-head' },
+          h(Tag, { tone: 'brand' }, FIX_KIND_LABEL[kind] || kind || '账本'),
+          name ? h('span', { className: 'nd-fix-name' }, name) : null,
+        ),
+        rows.length
+          ? h('div', { className: 'nd-fix-rows' }, rows.map((row) => h('div', { className: 'nd-fix-row', key: row.key },
+              h('span', { className: 'nd-fix-k' }, row.label),
+              h('span', { className: 'nd-fix-v' }, row.text),
+            )))
+          : null,
+        complex.length
+          ? h('div', { className: 'nd-fix-rows' }, complex.map((row) => h('div', { className: 'nd-fix-row', key: row.key },
+              h('span', { className: 'nd-fix-k' }, row.label),
+              h('span', { className: 'nd-fix-v nd-hint' }, Array.isArray(row.value) ? `${row.value.length} 项（见原始数据）` : '（结构化数据）'),
+            )))
+          : null,
+        h('details', { className: 'nd-fix-raw' },
+          h('summary', null, '原始数据'),
+          h('pre', { className: 'nd-pre' }, raw),
+        ),
+      )
+    }
+
+    // 闸门：先说结论（几项未过），明细折起来，别让四行 Tag 抢正文的注意力。
     function GatesView({ gates }) {
       if (!gates || typeof gates !== 'object') return null
       const aistyle = gates.aistyle && typeof gates.aistyle === 'object' ? gates.aistyle : null
       const prose = gates.prose && typeof gates.prose === 'object' ? gates.prose : null
       const rows = [
-        ['正文规范化', prose ? (prose.normalized === false ? '未通过' : '通过') : '—', prose && prose.normalized !== false ? 'ok' : prose ? 'warn' : 'muted'],
-        ['保真校验', gates.fidelity === 'fail' ? '未通过' : gates.fidelity ? '通过' : '—', gates.fidelity === 'fail' ? 'warn' : gates.fidelity ? 'ok' : 'muted'],
-        ['残留检查', gates.residue === 'fail' ? '未通过' : gates.residue ? '通过' : '—', gates.residue === 'fail' ? 'warn' : gates.residue ? 'ok' : 'muted'],
-        ['AI 味', aistyle ? `${aistyle.score == null ? '—' : aistyle.score} 分${aistyle.pass === false ? '（未通过）' : aistyle.pass ? '（通过）' : ''}` : '—', aistyle && aistyle.pass === false ? 'warn' : aistyle ? 'ok' : 'muted'],
+        { label: '正文规范化', state: prose ? (prose.normalized === false ? 'fail' : 'pass') : 'skip', text: prose ? (prose.normalized === false ? '未通过' : '通过') : '未记录' },
+        { label: '保真校验', state: gates.fidelity === 'fail' ? 'fail' : gates.fidelity ? 'pass' : 'skip', text: gates.fidelity === 'fail' ? '未通过' : gates.fidelity ? '通过' : '未记录' },
+        { label: '残留检查', state: gates.residue === 'fail' ? 'fail' : gates.residue ? 'pass' : 'skip', text: gates.residue === 'fail' ? '未通过' : gates.residue ? '通过' : '未记录' },
+        {
+          label: 'AI 味',
+          state: aistyle ? (aistyle.pass === false ? 'fail' : 'pass') : 'skip',
+          text: aistyle ? `${aistyle.score == null ? '—' : aistyle.score} 分${aistyle.pass === false ? '（未通过）' : aistyle.pass ? '（通过）' : ''}` : '未记录',
+        },
       ]
+      const failed = rows.filter((row) => row.state === 'fail')
+      const tone = failed.length ? 'warn' : rows.some((row) => row.state === 'pass') ? 'ok' : 'muted'
+      const verdict = failed.length
+        ? `闸门未过：${failed.map((row) => row.label).join('、')}`
+        : rows.some((row) => row.state === 'pass') ? '闸门全部通过' : '闸门结果未记录'
       return h('div', { className: 'nd-gates' },
-        h('div', { className: 'nd-side-sub' }, '闸门结果'),
-        rows.map((row) => h('div', { className: 'nd-gate-row', key: row[0] }, h('span', null, row[0]), h(Tag, { tone: row[2] }, row[1]))),
+        h('div', { className: 'nd-gates-head' },
+          h(Tag, { tone }, verdict),
+          h('span', { className: 'nd-hint' }, `通过 ${rows.filter((row) => row.state === 'pass').length}/${rows.length} 项`),
+        ),
+        h('details', { className: 'nd-gates-detail' },
+          h('summary', null, '明细'),
+          rows.map((row) => h('div', { className: 'nd-gate-row', key: row.label },
+            h('span', null, row.label),
+            h(Tag, { tone: row.state === 'fail' ? 'warn' : row.state === 'pass' ? 'ok' : 'muted' }, row.text),
+          )),
+        ),
       )
     }
 
-    function ProposalsTab({ projectId, openChapter, go, onChanged }) {
+    function ProposalsTab({ projectId, toc, openChapter, go, onChanged }) {
       const [status, setStatus] = useState('pending')
       const [openId, setOpenId] = useState('')
       const [notice, setNotice] = useState(null)
@@ -4588,6 +4830,53 @@ window.__ModuleLoader__.load({
         () => toList(proposals.data, 'proposals').filter((p) => PROPOSAL_KINDS.includes(p.kind)),
         [proposals.data],
       )
+      // 来源意见：把 reviewIds 还原成「引文 + 建议」，别在界面上甩 id
+      const reviewsRes = useAsync(
+        () => (projectId ? api('review.list', scope(projectId)) : Promise.resolve([])),
+        [projectId],
+      )
+      const reviewMap = useMemo(() => {
+        const map = new Map()
+        for (const review of toList(reviewsRes.data, 'reviews')) map.set(String(review.id), review)
+        return map
+      }, [reviewsRes.data])
+      // 章号 → 章名，提案里只存了 chapter 数字
+      const tocMap = useMemo(() => {
+        const map = new Map()
+        for (const row of toc || []) map.set(chapterNo(row), row)
+        return map
+      }, [toc])
+      const chapterLabelOf = useCallback((chapter) => {
+        const no = Number(chapter) || 0
+        if (!no) return ''
+        const row = tocMap.get(no)
+        return row ? `第 ${no} 章 · ${chapterTitle(row)}` : `第 ${no} 章`
+      }, [tocMap])
+      // 折叠状态下的一句话摘要：先让人知道这条提案到底动了什么
+      const proposalDigest = useCallback((proposal) => {
+        const data = (proposal && proposal.data) || {}
+        const patches = Array.isArray(data.patches) ? data.patches : []
+        const chapters = [...new Set(patches.map((patch) => Number(patch && patch.chapter) || 0).filter((n) => n > 0))]
+        if (proposal.kind === 'patch-paragraph' || (patches.length && proposal.kind !== 'book-fix')) {
+          const sizes = patches.reduce((acc, patch) => {
+            const size = diffSize(diffSegments(String((patch && patch.before) ?? ''), String((patch && patch.after) ?? '')))
+            acc.ins += size.ins
+            acc.del += size.del
+            return acc
+          }, { ins: 0, del: 0 })
+          return `${chapterLabelOf(chapterNo(proposal)) || '—'} · 改 ${patches.length} 段 · ＋${sizes.ins}/－${sizes.del} 字`
+        }
+        if (proposal.kind === 'rewrite-chapter') {
+          const content = String(data.content ?? '')
+          return `${chapterLabelOf(chapterNo(proposal)) || '—'} · 整章替换 · ${fmtWords(content.length)} 字`
+        }
+        if (proposal.kind === 'book-fix') {
+          return `全书 · ${chapters.length} 章 · ${patches.length} 处补丁`
+        }
+        const fixes = proposalLedgerFixes(data)
+        const kinds = [...new Set(fixes.map((fix) => fix.kind))].map((kind) => FIX_KIND_LABEL[kind] || kind)
+        return `账本 · ${kinds.join('、') || '修订'} ${fixes.length} 条`
+      }, [chapterLabelOf])
 
       const startEdit = (proposal) => {
         const data = JSON.parse(JSON.stringify(proposal.data || {}))
@@ -4758,6 +5047,14 @@ window.__ModuleLoader__.load({
                     const pending = (proposal.status || 'pending') === 'pending'
                     const editable = pending || proposal.status === 'needs-fix'
                     const editing = Boolean(edit && edit.id === proposal.id)
+                    // 补丁按章分组：全书提案一眼能看出「哪一章要改几处」
+                    const groupMap = new Map()
+                    patches.forEach((patch, index) => {
+                      const key = Number(patch && patch.chapter) || (proposal.kind === 'book-fix' ? 0 : chapterNo(proposal) || 0)
+                      if (!groupMap.has(key)) groupMap.set(key, [])
+                      groupMap.get(key).push({ patch, index })
+                    })
+                    const groups = [...groupMap.entries()].map(([chapter, items]) => ({ chapter, items }))
                     return h('article', { key: proposal.id, className: `nd-proposal${expanded ? ' nd-proposal-open' : ''}` },
                       h('div', { className: 'nd-proposal-head', role: 'button', tabIndex: 0, onClick: () => openProposal(proposal), onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProposal(proposal) } } },
                         pending ? h('span', { className: 'nd-form-row', onClick: (e) => e.stopPropagation() },
@@ -4765,8 +5062,7 @@ window.__ModuleLoader__.load({
                         h('span', { className: 'nd-proposal-arrow' }, expanded ? '▾' : '▸'),
                         h('span', { className: 'nd-proposal-title' }, String(proposal.title || proposal.id)),
                         h(Tag, { tone: 'brand' }, PROPOSAL_KIND[proposal.kind] || proposal.kind),
-                        patches.length ? h(Tag, { tone: 'muted' }, `${patches.length} 条补丁${patchChapters > 1 ? ` / ${patchChapters} 章` : ''}`) : null,
-                        chapterNo(proposal) ? h(Tag, null, `第 ${chapterNo(proposal)} 章`) : proposal.kind === 'book-fix' ? h(Tag, { tone: 'brand' }, '全书') : null,
+                        h('span', { className: 'nd-proposal-digest' }, proposalDigest(proposal)),
                         h(Tag, { tone: proposal.status === 'needs-fix' ? 'warn' : proposal.status === 'accepted' ? 'ok' : proposal.status === 'rejected' ? 'error' : 'muted' }, PROPOSAL_STATUS[proposal.status || 'pending'] || proposal.status),
                         h('span', { className: 'nd-hint nd-proposal-when' }, fmtAgo(proposal.createdAt)),
                         pending
@@ -4780,6 +5076,7 @@ window.__ModuleLoader__.load({
                         ? h('div', { className: 'nd-proposal-body' },
                             proposal.summary ? h('p', { className: 'nd-proposal-summary' }, String(proposal.summary)) : null,
                             proposal.status === 'needs-fix' ? h(Msg, { tone: 'warn' }, `未通过闸门：${proposalReasons(proposal)}`) : null,
+                            h(GatesView, { gates: proposal.gates }),
                             proposal.kind === 'book-fix' && data.opinion
                               ? h('div', { className: 'nd-field' },
                                   h('div', { className: 'nd-side-sub' }, '全局修改意见'),
@@ -4789,37 +5086,46 @@ window.__ModuleLoader__.load({
                                 )
                               : null,
                             patches.length
-                              ? h('div', { className: 'nd-side-sub' }, `补丁（${patches.length} 条${patchChapters > 1 ? `，跨 ${patchChapters} 章` : ''}）${pending || proposal.status === 'needs-fix' ? ' · 可在下方直接编辑「改为」' : ''}`)
-                              : null,
-                            patches.length
-                              ? h('div', { className: 'nd-diffs' }, patches.map((patch, index) =>
-                                  h('div', { className: 'nd-diff', key: index },
-                                    h('div', { className: 'nd-diff-col' },
-                                      h('div', { className: 'nd-diff-head' }, `${proposal.kind === 'book-fix' && patch.chapter ? `第 ${patch.chapter} 章 · ` : ''}原文 ${index + 1}`),
-                                      h('pre', { className: 'nd-pre' }, String(patch.before || '—')),
-                                    ),
-                                    h('div', { className: 'nd-diff-col' },
-                                      h('div', { className: 'nd-diff-head' }, '改为'),
-                                      editing
-                                        ? h(TextArea, { value: String(patch.after || ''), rows: 4, onChange: (next) => updateEditPatch(index, next) })
-                                        : h('pre', { className: 'nd-pre' }, String(patch.after || '（留空 = 删除该段）')),
-                                    ),
-                                    patch.why ? h('div', { className: 'nd-diff-why' }, `理由：${patch.why}`) : null,
-                                    Array.isArray(patch.reviewIds) && patch.reviewIds.length ? h('div', { className: 'nd-hint' }, `来源意见：${patch.reviewIds.join('、')}`) : null,
+                              ? h('div', { className: 'nd-proposal-patches' },
+                                  h('div', { className: 'nd-side-sub' },
+                                    `改动（${patches.length} 处${patchChapters > 1 ? `，跨 ${patchChapters} 章` : ''}）· 划线的是删掉的、绿色的是新加的`,
+                                    editing ? ' · 可在每处下面直接改写' : '',
                                   ),
-                                ))
+                                  groups.map((group) => {
+                                    const groupHead = group.chapter && (proposal.kind === 'book-fix' || groups.length > 1)
+                                      ? chapterLabelOf(group.chapter)
+                                      : ''
+                                    return h('div', { className: 'nd-patch-group', key: group.chapter },
+                                      groupHead ? h('div', { className: 'nd-patch-group-head' }, groupHead) : null,
+                                      group.items.map((item, position) => h(PatchView, {
+                                        key: item.index,
+                                        index: item.index,
+                                        ordinal: position + 1,
+                                        patch: item.patch,
+                                        editing,
+                                        reviewMap,
+                                        onChange: (next) => updateEditPatch(item.index, next),
+                                      })),
+                                    )
+                                  }),
+                                )
                               : null,
-                            data.content ? h('div', { className: 'nd-diff-col' },
-                              h('div', { className: 'nd-diff-head' }, '整章新正文（纯文本）'),
-                              editing ? h(TextArea, { value: String(data.content), rows: 12, onChange: updateEditContent }) : h('pre', { className: 'nd-pre nd-pre-tall' }, String(data.content)),
-                            ) : null,
+                            data.content
+                              ? h('div', { className: 'nd-field' },
+                                  h('div', { className: 'nd-side-sub' },
+                                    `整章新正文 · ${fmtWords(String(data.content).length)} 字 · ${String(data.content).split(/\n+/).filter((line) => String(line).trim()).length} 段`,
+                                  ),
+                                  editing
+                                    ? h(TextArea, { value: String(data.content), rows: 14, onChange: updateEditContent })
+                                    : h('pre', { className: 'nd-pre nd-pre-tall' }, String(data.content)),
+                                )
+                              : null,
                             fixes.length
                               ? h('div', { className: 'nd-fixes' },
                                   h('div', { className: 'nd-side-sub' }, `账本修订（${fixes.length} 条）`),
-                                  fixes.map((fix, index) => h('div', { className: 'nd-fix', key: index }, ledgerFixSummary(fix))),
+                                  fixes.map((fix, index) => h(LedgerFixView, { key: index, fix })),
                                 )
                               : null,
-                            h(GatesView, { gates: proposal.gates }),
                             editing
                               ? h('div', { className: 'nd-proposal-actions' },
                                   h(Btn, { small: true, kind: 'primary', onClick: () => saveEdit(proposal), disabled: Boolean(edit && edit.busy) }, edit && edit.busy ? '保存中…' : '保存改法'),
@@ -7912,6 +8218,38 @@ const CSS_EXTRA = `
 .nd-toc-del:hover{color:#dc2626;background:rgba(220,38,38,.12)}
 .nd-toc-active-row{background:var(--dsw-alias-brand-weak,rgba(59,130,246,.14))}
 .nd-toc-active-row .nd-toc-item{background:transparent}
+/* 提案页可读化：内联 diff / 字段化账本修订 / 折叠闸门 */
+.nd-proposal-digest{flex:1 1 100%;order:9;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}
+.nd-proposal-patches{display:flex;flex-direction:column;gap:8px}
+.nd-patch-group{display:flex;flex-direction:column;gap:8px}
+.nd-patch-group-head{font-size:12px;font-weight:600;color:var(--dsw-alias-fg,#111827);padding-top:2px}
+.nd-patch{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--dsw-alias-border,#eceff3);border-radius:10px;background:var(--dsw-alias-bg,#fff)}
+.nd-patch-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280)}
+.nd-patch-ch{color:var(--dsw-alias-fg,#111827);font-weight:600}
+.nd-patch-idx{color:var(--dsw-alias-fg-muted,#9ca3af)}
+.nd-patch-size{font-variant-numeric:tabular-nums}
+.nd-size-ins{color:#15803d}
+.nd-size-del{color:#b91c1c}
+.nd-patch-toggle{margin-left:auto;padding:2px 8px;border:1px solid var(--dsw-alias-border,#e5e7eb);border-radius:999px;background:transparent;color:var(--dsw-alias-fg-muted,#6b7280);font-size:11px;cursor:pointer}
+.nd-patch-toggle:hover{color:var(--dsw-alias-brand,#2563eb);border-color:var(--dsw-alias-brand,#2563eb)}
+.nd-patch-read{padding:9px 11px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa);border:1px solid var(--dsw-alias-border,#f0f1f3)}
+.nd-inline-diff{margin:0;font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--dsw-alias-fg,#111827)}
+.nd-inline-del{color:#b91c1c;background:rgba(220,38,38,.10);text-decoration:line-through;text-decoration-thickness:1px;border-radius:3px}
+.nd-inline-ins{color:#15803d;background:rgba(22,163,74,.14);text-decoration:none;border-radius:3px}
+.nd-patch-edit{display:flex;flex-direction:column;gap:4px}
+.nd-patch-why{margin:0;font-size:12px;color:var(--dsw-alias-fg-muted,#6b7280);line-height:1.7}
+.nd-patch-src{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nd-src-chip{padding:1px 7px;border-radius:999px;background:var(--dsw-alias-bg-elevated,#f3f4f6);border:1px solid var(--dsw-alias-border,#e5e7eb);font-size:11px;color:var(--dsw-alias-fg-muted,#4b5563);cursor:help}
+.nd-fix{display:flex;flex-direction:column;gap:6px;padding:9px 11px;border-radius:8px;background:var(--dsw-alias-bg-elevated,#fafafa);border:1px solid var(--dsw-alias-border,#f0f1f3);font-size:12px}
+.nd-fix-head{display:flex;align-items:center;gap:8px;font-weight:600}
+.nd-fix-name{color:var(--dsw-alias-fg,#111827)}
+.nd-fix-rows{display:flex;flex-direction:column;gap:3px}
+.nd-fix-row{display:flex;gap:8px;align-items:baseline}
+.nd-fix-k{flex:0 0 68px;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px}
+.nd-fix-v{flex:1;min-width:0;color:var(--dsw-alias-fg,#374151);overflow-wrap:anywhere;line-height:1.7}
+.nd-fix-raw summary{cursor:pointer;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px}
+.nd-gates-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nd-gates-detail summary{cursor:pointer;color:var(--dsw-alias-fg-muted,#9ca3af);font-size:11px;padding:2px 0}
 `
     // 仿纸正文底（0.6.10）：阅读区和正文编辑器共用同一张纸，宽屏窄屏一致。
     // 纸色/墨色都写死成暖色，不跟 DSH 明暗主题走——翻到哪一屏都是「纸上的正文」。
